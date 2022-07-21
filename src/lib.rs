@@ -174,6 +174,7 @@ mod lockref;
 mod ref_iter;
 mod tree;
 mod unique_heap;
+pub mod nim;
 
 #[cfg(feature = "two_player")]
 mod map_maybe;
@@ -192,7 +193,9 @@ pub mod prelude {
 
     pub use crate::tree::NodeAlias;
     pub use crate::tree::TreeAlias;
+    pub use crate::nim;
 
     #[cfg(feature = "test_internals")]
     pub use crate::tree::test::*;
+    
 }

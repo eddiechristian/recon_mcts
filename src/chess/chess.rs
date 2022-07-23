@@ -1,9 +1,10 @@
 use std::{collections::HashMap, convert::From};
 
-use crate::chess::{chess_mcts::Player, knight::get_knight_unvalidated_moves};
+use crate::chess::{chess_mcts::Player, king::get_king_unvalidated_moves};
 
 use super::{
-    chess_errors, chess_notation, fen::FenRecord, pawn::get_pawn_unvalidated_moves,
+    chess_errors, chess_notation, fen::FenRecord, knight::get_knight_unvalidated_moves,
+    pawn::get_pawn_unvalidated_moves, queen::get_queen_unvalidated_moves,
     rook::get_rook_unvalidated_moves,
 };
 
@@ -23,11 +24,7 @@ pub fn get_unvalidated_moves(
 ) -> Result<HashMap<String, Vec<String>>, chess_errors::ChessErrors> {
     let chess = Chess::from(&FenRecord::from(&state.to_owned()));
     return chess.get_unvalidated_moves();
-
 }
-
-
-
 
 #[derive(Debug, PartialEq)]
 pub(crate) enum PieceType {
@@ -92,59 +89,96 @@ pub(crate) struct Chess {
 }
 
 impl Chess {
-pub fn get_unvalidated_moves(&self
-) -> Result<HashMap<String, Vec<String>>, chess_errors::ChessErrors> {
-    let mut unvalidated_moves = HashMap::new();
-    for (index, piece_opt) in self.state.iter().enumerate() {
-        if let Some(piece) = piece_opt {
-            match piece.piece_type {
-                PieceType::WhitePawn | PieceType::BlackPawn => {
-                    let mut unvalidated_moves_pawn = get_pawn_unvalidated_moves(
-                        piece,
-                        &self.state,
-                        &chess_notation::index_to_spot(index),
-                    )?;
-                    for (key, mut value) in unvalidated_moves_pawn.iter_mut() {
-                        unvalidated_moves
-                            .entry(key.to_owned())
-                            .or_insert_with(|| Vec::new())
-                            .append(&mut value);
+    pub fn get_unvalidated_moves(
+        &self,
+    ) -> Result<HashMap<String, Vec<String>>, chess_errors::ChessErrors> {
+        let mut unvalidated_moves = HashMap::new();
+        for (index, piece_opt) in self.state.iter().enumerate() {
+            if let Some(piece) = piece_opt {
+                match piece.piece_type {
+                    PieceType::WhitePawn | PieceType::BlackPawn => {
+                        let mut unvalidated_moves_pawn = get_pawn_unvalidated_moves(
+                            piece,
+                            &self.state,
+                            &chess_notation::index_to_spot(index),
+                        )?;
+                        for (key, mut value) in unvalidated_moves_pawn.iter_mut() {
+                            unvalidated_moves
+                                .entry(key.to_owned())
+                                .or_insert_with(|| Vec::new())
+                                .append(&mut value);
+                        }
                     }
-                },
-                PieceType::WhiteRook | PieceType::BlackRook => {
-                    let mut unvalidated_moves_rook = get_rook_unvalidated_moves(
-                        piece,
-                        &self.state,
-                        &chess_notation::index_to_spot(index),
-                    )?;
-                    for (key, mut value) in unvalidated_moves_rook.iter_mut() {
-                        unvalidated_moves
-                            .entry(key.to_owned())
-                            .or_insert_with(|| Vec::new())
-                            .append(&mut value);
+                    PieceType::WhiteRook | PieceType::BlackRook => {
+                        let mut unvalidated_moves_rook = get_rook_unvalidated_moves(
+                            piece,
+                            &self.state,
+                            &chess_notation::index_to_spot(index),
+                        )?;
+                        for (key, mut value) in unvalidated_moves_rook.iter_mut() {
+                            unvalidated_moves
+                                .entry(key.to_owned())
+                                .or_insert_with(|| Vec::new())
+                                .append(&mut value);
+                        }
                     }
-                },
-                PieceType::WhiteKnight | PieceType::BlackKnight => {
-                    let mut unvalidated_moves_rook = get_knight_unvalidated_moves(
-                        piece,
-                        &self.state,
-                        &chess_notation::index_to_spot(index),
-                    )?;
-                    for (key, mut value) in unvalidated_moves_rook.iter_mut() {
-                        unvalidated_moves
-                            .entry(key.to_owned())
-                            .or_insert_with(|| Vec::new())
-                            .append(&mut value);
+                    PieceType::WhiteKnight | PieceType::BlackKnight => {
+                        let mut unvalidated_moves_knight = get_knight_unvalidated_moves(
+                            piece,
+                            &self.state,
+                            &chess_notation::index_to_spot(index),
+                        )?;
+                        for (key, mut value) in unvalidated_moves_knight.iter_mut() {
+                            unvalidated_moves
+                                .entry(key.to_owned())
+                                .or_insert_with(|| Vec::new())
+                                .append(&mut value);
+                        }
                     }
-                },
-                PieceType::WhiteBishop | PieceType::BlackBishop => {
-
+                    PieceType::WhiteBishop | PieceType::BlackBishop => {
+                        let mut unvalidated_moves_bishop = get_rook_unvalidated_moves(
+                            piece,
+                            &self.state,
+                            &chess_notation::index_to_spot(index),
+                        )?;
+                        for (key, mut value) in unvalidated_moves_bishop.iter_mut() {
+                            unvalidated_moves
+                                .entry(key.to_owned())
+                                .or_insert_with(|| Vec::new())
+                                .append(&mut value);
+                        }
+                    }
+                    PieceType::WhiteQueen | PieceType::BlackQueen => {
+                        let mut unvalidated_moves_queen = get_queen_unvalidated_moves(
+                            piece,
+                            &self.state,
+                            &chess_notation::index_to_spot(index),
+                        )?;
+                        for (key, mut value) in unvalidated_moves_queen.iter_mut() {
+                            unvalidated_moves
+                                .entry(key.to_owned())
+                                .or_insert_with(|| Vec::new())
+                                .append(&mut value);
+                        }
+                    }
+                    PieceType::WhiteKing | PieceType::BlackKing => {
+                        let mut unvalidated_moves_king = get_king_unvalidated_moves(
+                            piece,
+                            &self.state,
+                            &chess_notation::index_to_spot(index),
+                        )?;
+                        for (key, mut value) in unvalidated_moves_king.iter_mut() {
+                            unvalidated_moves
+                                .entry(key.to_owned())
+                                .or_insert_with(|| Vec::new())
+                                .append(&mut value);
+                        }
+                    }
+                    _ => {}
                 }
-                _ => {}
             }
         }
+        println!("unvalidated_moves {:?}", unvalidated_moves);
+        Ok(unvalidated_moves)
     }
-    println!("unvalidated_moves {:?}", unvalidated_moves);
-    Ok(unvalidated_moves)
-}
 }

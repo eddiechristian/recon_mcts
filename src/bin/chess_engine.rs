@@ -5,7 +5,11 @@ use rand::{Rng, SeedableRng};
 use recon_mcts::chess::chess::{get_unvalidated_moves, FEN_INITIAL_STATE};
 
 pub fn main() {
-    let a = get_unvalidated_moves(FEN_INITIAL_STATE);
+    let t0 = std::time::Instant::now();
+    for i in 0..1000 {
+        let a = get_unvalidated_moves(FEN_INITIAL_STATE);
+    }
+    println!("Elapsed: {:?}", t0.elapsed());
 }
 
 // pub fn main() {

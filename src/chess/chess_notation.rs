@@ -61,6 +61,7 @@ impl fmt::Display for Bounds {
     }
 }
 
+#[inline(always)]
 pub(crate) fn minus_one_col(the_col: char) -> Option<char> {
     match the_col {
         'b' => Some('a'),
@@ -74,6 +75,7 @@ pub(crate) fn minus_one_col(the_col: char) -> Option<char> {
     }
 }
 
+#[inline(always)]
 pub(crate) fn plus_one_col(the_col: char) -> Option<char> {
     match the_col {
         'a' => Some('b'),
@@ -87,13 +89,11 @@ pub(crate) fn plus_one_col(the_col: char) -> Option<char> {
     }
 }
 
+#[inline(always)]
 pub(crate) fn get_unvalidated_diag_moves(
     spot: &str,
-) -> Result<Vec<String>, chess_errors::ChessErrors> {
-    let mut right_top_spots = Vec::new();
-    let mut right_bottom_spots = Vec::new();
-    let mut left_bottom_spots = Vec::new();
-    let mut left_top_spots = Vec::new();
+) -> Result<HashMap<String, Vec<String>>, chess_errors::ChessErrors> {
+    let mut unvalidated_moves = HashMap::new();
 
     let mut right_top_pos_opt = Some(spot.to_string());
 
@@ -101,8 +101,10 @@ pub(crate) fn get_unvalidated_diag_moves(
         let bounds = get_bounds(&right_top_pos_opt.unwrap())?;
         if let Some(right_top_pos_array) = bounds.top_right_diag {
             let right_top_pos = std::str::from_utf8(&right_top_pos_array).unwrap();
-            let value = format!("{}-{}", spot, right_top_pos);
-            right_top_spots.push(value);
+            unvalidated_moves
+                .entry(spot.to_owned())
+                .or_insert_with(|| Vec::new())
+                .push(right_top_pos.to_string());
             right_top_pos_opt = Some(right_top_pos.to_string());
         } else {
             break;
@@ -113,8 +115,10 @@ pub(crate) fn get_unvalidated_diag_moves(
         let bounds = get_bounds(&right_bottom_pos_opt.unwrap())?;
         if let Some(right_bottom_pos_array) = bounds.bottom_right_diag {
             let right_bottom_pos = std::str::from_utf8(&right_bottom_pos_array).unwrap();
-            let value = format!("{}-{}", spot, right_bottom_pos);
-            right_bottom_spots.push(value);
+            unvalidated_moves
+                .entry(spot.to_owned())
+                .or_insert_with(|| Vec::new())
+                .push(right_bottom_pos.to_string());
             right_bottom_pos_opt = Some(right_bottom_pos.to_string());
         } else {
             break;
@@ -126,8 +130,10 @@ pub(crate) fn get_unvalidated_diag_moves(
         let bounds = get_bounds(&left_bottom_pos_opt.unwrap())?;
         if let Some(left_bottom_pos_array) = bounds.bottom_left_diag {
             let left_bottom_pos = std::str::from_utf8(&left_bottom_pos_array).unwrap();
-            let value = format!("{}-{}", spot, left_bottom_pos);
-            left_bottom_spots.push(value);
+            unvalidated_moves
+                .entry(spot.to_owned())
+                .or_insert_with(|| Vec::new())
+                .push(left_bottom_pos.to_string());
             left_bottom_pos_opt = Some(left_bottom_pos.to_string());
         } else {
             break;
@@ -139,20 +145,20 @@ pub(crate) fn get_unvalidated_diag_moves(
         let bounds = get_bounds(&left_top_pos_opt.unwrap())?;
         if let Some(left_top_pos_array) = bounds.top_left_diag {
             let left_top_pos = std::str::from_utf8(&left_top_pos_array).unwrap();
-            let value = format!("{}-{}", spot, left_top_pos);
-            left_top_spots.push(value);
+            unvalidated_moves
+                .entry(spot.to_owned())
+                .or_insert_with(|| Vec::new())
+                .push(left_top_pos.to_string());
             left_top_pos_opt = Some(left_top_pos.to_string());
         } else {
             break;
         }
     }
 
-    right_top_spots.append(&mut right_bottom_spots);
-    right_top_spots.append(&mut left_bottom_spots);
-    right_top_spots.append(&mut left_top_spots);
-    Ok(right_top_spots)
+    Ok(unvalidated_moves)
 }
 
+#[inline(always)]
 pub(crate) fn get_unvalidated_horiz_vert_moves(
     spot: &str,
 ) -> Result<HashMap<String, Vec<String>>, chess_errors::ChessErrors> {
@@ -221,6 +227,7 @@ pub(crate) fn get_unvalidated_horiz_vert_moves(
     Ok(unvalidated_moves)
 }
 
+#[inline(always)]
 pub(crate) fn check_for_valid_notation(spot: &str) -> Result<bool, chess_errors::ChessErrors> {
     match &spot.chars().nth(0).unwrap() {
         'a' | 'b' | 'c' | 'd' | 'e' | 'f' | 'g' | 'h' => match &spot.chars().nth(1).unwrap() {
@@ -231,6 +238,7 @@ pub(crate) fn check_for_valid_notation(spot: &str) -> Result<bool, chess_errors:
     }
 }
 
+#[inline(always)]
 pub(crate) fn get_bounds(spot: &str) -> Result<Bounds, chess_errors::ChessErrors> {
     check_for_valid_notation(spot)?;
     let top = {
@@ -442,6 +450,7 @@ pub(crate) fn get_bounds(spot: &str) -> Result<Bounds, chess_errors::ChessErrors
     Ok(bounds)
 }
 
+#[inline(always)]
 pub(crate) fn index_to_spot(index: usize) -> String {
     let row = index / 8;
     let col = index % 8;
@@ -476,6 +485,7 @@ pub(crate) fn index_to_spot(index: usize) -> String {
     "".to_string()
 }
 
+#[inline(always)]
 pub(crate) fn convert_col(spot: &str) -> Result<usize, chess_errors::ChessErrors> {
     let col = match spot.chars().nth(0) {
         Some(first_char) => match first_char {
@@ -501,6 +511,7 @@ pub(crate) fn convert_col(spot: &str) -> Result<usize, chess_errors::ChessErrors
     Ok(col)
 }
 
+#[inline(always)]
 pub(crate) fn convert_row(spot: &str) -> Result<usize, chess_errors::ChessErrors> {
     let row = match spot.chars().nth(1) {
         Some(first_char) => match first_char {
@@ -526,6 +537,7 @@ pub(crate) fn convert_row(spot: &str) -> Result<usize, chess_errors::ChessErrors
     Ok(row)
 }
 
+#[inline(always)]
 pub(crate) fn notation_to_index(spot: &str) -> Result<usize, chess_errors::ChessErrors> {
     let col = convert_col(spot)?;
     let row = convert_row(spot)?;
@@ -533,6 +545,7 @@ pub(crate) fn notation_to_index(spot: &str) -> Result<usize, chess_errors::Chess
     Ok(index)
 }
 
+#[inline(always)]
 pub(crate) fn convert_move_notation_to_indexes(
     from_spot: &str,
     to_spot: &str,
@@ -543,6 +556,7 @@ pub(crate) fn convert_move_notation_to_indexes(
     Ok((from_index, to_index))
 }
 
+#[inline(always)]
 pub(crate) fn convert_move_notation_to_xy(
     from_spot: &str,
     to_spot: &str,

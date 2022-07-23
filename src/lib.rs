@@ -169,12 +169,13 @@
     broken_intra_doc_links
 )]
 
+pub mod chess;
 mod game_dynamics;
 mod lockref;
+pub mod nim;
 mod ref_iter;
 mod tree;
 mod unique_heap;
-pub mod nim;
 
 #[cfg(feature = "two_player")]
 mod map_maybe;
@@ -191,11 +192,11 @@ pub mod prelude {
         WeakWrap,
     };
 
+    pub use crate::nim;
     pub use crate::tree::NodeAlias;
     pub use crate::tree::TreeAlias;
-    pub use crate::nim;
+    // pub use crate::chess_mcts::{Chess, Player};
 
     #[cfg(feature = "test_internals")]
     pub use crate::tree::test::*;
-    
 }

@@ -102,7 +102,7 @@ impl Iterator for ActionIter {
 #[doc(hidden)]
 #[derive(Debug)]
 pub struct Nim {
-   pub max_move: usize,
+    pub max_move: usize,
     // Include an rng to allow our implementation to include a random exploration incentive
     pub rng: Mutex<StdRng>,
 }

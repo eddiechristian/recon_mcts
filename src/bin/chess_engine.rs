@@ -8,10 +8,9 @@ pub fn main() {
     
     let t0 = std::time::Instant::now();
     
-    // for i in 0..1000 {
-        let st = "8/P7/8/8/8/8/p7/8 b kqkq - 0 0";
-        let a = get_legal_moves(FEN_INITIAL_STATE);
-    // }
+    
+    let (moves_map,web_game) = get_legal_moves(FEN_INITIAL_STATE);
+  
     println!("Elapsed: {:?}", t0.elapsed());
 }
 

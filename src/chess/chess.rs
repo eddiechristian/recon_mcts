@@ -8,7 +8,7 @@ use crate::chess::{chess_mcts::Player, king::get_king_unvalidated_moves};
 use super::{
     chess_errors, chess_notation, fen::FenRecord, knight::get_knight_unvalidated_moves,
     pawn::get_pawn_unvalidated_moves, pawn::move_pawn_vertical , pawn::move_pawn_diagonal,
-    queen::get_queen_unvalidated_moves, rook::get_rook_unvalidated_moves,
+    queen::get_queen_unvalidated_moves, rook::get_rook_unvalidated_moves, bishop::get_bishop_unvalidated_moves
 };
 
 pub(crate) const INIT: Option<Piece> = None;
@@ -22,13 +22,15 @@ pub fn get_avaiable_actions(state: &str) -> Vec<[char; 5]> {
 
     a
 }
+///
+/// 
 pub fn get_legal_moves(
     state: &str,
 ) -> (HashMap<String,Vec<String>>, WebGame) {
-    let chess = Chess::from(&FenRecord::from(&state.to_owned()));
-    let mut fen_record: FenRecord = FenRecord::from(&chess);
-    println!("{}\n{}",state, fen_record.to_string());
+    let mut chess = Chess::from(&FenRecord::from(&state.to_owned()));
+    let fen_record: FenRecord = FenRecord::from(&chess);
     let valid_moves = chess.get_legal_moves().unwrap();
+    println!("fen_record {}", fen_record);
     let web_game:WebGame = WebGame::from(&chess);
     (valid_moves,web_game)
 }
@@ -97,20 +99,6 @@ impl Piece {
         }
     }
 
-    fn get_unvalidated_moves(
-        &self,
-        state: &[Option<Piece>; 64],
-        spot: &str,
-    ) -> Result<HashMap<String, Vec<String>>, chess_errors::ChessErrors> {
-        match self.piece_type {
-            PieceType::WhitePawn => {
-                return get_pawn_unvalidated_moves(&self, state, spot);
-            }
-            _ => {
-                todo!();
-            }
-        }
-    }
     fn move_horizontal(&self, to_spot: &str, state: &[Option<Piece>; 64], delta_x: i8, promotion: Option<&str>) -> Result<String, chess_errors::ChessErrors>{
         match self.piece_type {
             PieceType::BlackPawn | PieceType::WhitePawn | 
@@ -129,7 +117,7 @@ impl Piece {
                 Ok(to_spot.to_string())
             }
             PieceType::BlackKing | PieceType::WhiteKing => {
-                todo!()
+                Ok(to_spot.to_string())
             }
 
         }
@@ -248,22 +236,15 @@ pub(crate) struct Chess {
 impl From<&Chess> for FenRecord {
     fn from(chess: &Chess) -> Self {
         let mut piece_placement_data = "".to_owned();
-        let mut num_empty = 0;
         for (index, piece_opt) in chess.state.iter().enumerate() {
             if index != 0 && index % 8 == 0 {
-               if num_empty > 0 {
-                    piece_placement_data.push_str(&format!("{}", num_empty));
-                }
                 piece_placement_data.push_str("/");
-                num_empty = 0;
             }
-            if let Some(piece) = piece_opt {
-                if num_empty > 0 {
-                    piece_placement_data.push_str(&format!("{}", num_empty));
-                    num_empty = 0;
-                } else {
-                    let piece_type =
-                    match piece.piece_type {
+           
+            let piece_type = {
+                match piece_opt {
+                    Some(piece) => {
+                        match piece.piece_type {
                         PieceType::BlackBishop => "b",
                         PieceType::BlackKing =>   "k",
                         PieceType::BlackKnight => "n",
@@ -276,14 +257,23 @@ impl From<&Chess> for FenRecord {
                         PieceType::WhitePawn =>   "P",
                         PieceType::WhiteQueen =>  "Q",
                         PieceType::WhiteRook =>   "R",
-
-                    };
-                    piece_placement_data.push_str(piece_type);
+                        }
+                    },
+                    None => "."
                 }
-            } else {
-                num_empty+= 1;
-            }
-        }
+               
+        };
+        piece_placement_data.push_str(piece_type);
+    }
+        
+        piece_placement_data = piece_placement_data.replace("........", "8");
+        piece_placement_data = piece_placement_data.replace(".......", "7");
+        piece_placement_data = piece_placement_data.replace("......", "6");
+        piece_placement_data = piece_placement_data.replace(".....", "5");
+        piece_placement_data = piece_placement_data.replace("....", "4");
+        piece_placement_data = piece_placement_data.replace("...", "3");
+        piece_placement_data = piece_placement_data.replace("..", "2");
+        piece_placement_data = piece_placement_data.replace(".", "1");
         let player = match chess.player {
             Player::Black => 'b',
             Player::White => 'w'
@@ -492,7 +482,6 @@ impl Chess {
                             .or_insert_with(|| Vec::new())
                             .append(&mut unvalidated_moves_vec);
                         }
-                        println!("unvalidated_moves {:?}", unvalidated_moves);
                     }
                     PieceType::WhiteRook | PieceType::BlackRook => {
                         let mut unvalidated_moves_rook = get_rook_unvalidated_moves(
@@ -521,7 +510,7 @@ impl Chess {
                         }
                     }
                     PieceType::WhiteBishop | PieceType::BlackBishop => {
-                        let mut unvalidated_moves_bishop = get_rook_unvalidated_moves(
+                        let mut unvalidated_moves_bishop = get_bishop_unvalidated_moves(
                             piece,
                             &self.state,
                             &chess_notation::index_to_spot(index),

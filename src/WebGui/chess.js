@@ -18,7 +18,7 @@ const colorArray = ["#774C3B","#C99468","#774C3B","#C99468","#774C3B","#C99468",
 const fen_initial_state= "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
 var starterPosition;
-var current_fen_state = "rnbqkbnr/pppppppp/8/8/P7/8/1PPPPPP/RNBQKBNR b KQkq - 0 1"
+var current_fen_state = "rnbqk2r/pppp1ppp/3bpn2/8/8/3PB3/PPPNPPPP/R1Q1KBNR b KQkq - 0 1"
 var from_spot;
 
 getValidMoves(); //only call when turn changes
@@ -33,7 +33,6 @@ function get_player() {
 
 function start_game() {
   svg.innerHTML = ""
-  console.log(starterPosition)
   start_player = get_player();
   
   for (let i = 0; i < rows; i++) {
@@ -41,7 +40,6 @@ function start_game() {
         square_id = getSquareId(j,i);
         counter++;
         let newRect = document.createElementNS(svgns, "rect");
-        let green_circle = document.createElementNS(svgns, "circle");
         gsap.set(newRect, {
           attr: {
             x: j * width,
@@ -53,6 +51,17 @@ function start_game() {
             class: "static",
           }
         });
+          newRect.addEventListener('mouseleave', mouseLeave);
+          newRect.addEventListener('mouseover', mouseOver);
+          svg.appendChild(newRect);
+      }
+    }
+    counter = 0
+    for (let i = 0; i < rows; i++) {
+      for (let j = 0; j < columns; j++) {
+        square_id = getSquareId(j,i);
+        counter++;
+        let green_circle = document.createElementNS(svgns, "circle");
         gsap.set(green_circle, {
           attr: {
             cx: j * width + 40,
@@ -62,6 +71,7 @@ function start_game() {
             class: "valid_moves"
           },
         });
+        svg.appendChild(green_circle);
         if (starterPosition[i][j] != '.'){
           piece = document.createElementNS(svgns, "image");
           piece_href = getPieceImageSource(starterPosition[i][j]);
@@ -84,24 +94,14 @@ function start_game() {
           piece.addEventListener('mousedown', startDrag);
           piece.addEventListener('mousemove', drag);
           piece.addEventListener('mouseup', endDrag);
-          newRect.addEventListener('mouseleave', mouseLeave);
-          newRect.addEventListener('mouseover', mouseOver);
-  
-          svg.appendChild(newRect);
           svg.appendChild(piece);
-          svg.appendChild(green_circle);
           
-        } else {
-          piece.addEventListener('mousedown', startDrag);
-          piece.addEventListener('mousemove', drag);
-          piece.addEventListener('mouseup', endDrag);
-          newRect.addEventListener('mouseleave', mouseLeave);
-          newRect.addEventListener('mouseover', mouseOver);
-          svg.appendChild(newRect);
-          svg.appendChild(green_circle);
-        }
+          
+        } 
       }
     }
+
+
 }
 
     
@@ -122,8 +122,8 @@ function start_game() {
             get_valid_move_resp = JSON.parse(xhr.responseText);
             starterPosition = get_valid_move_resp.web_game.state;
             values_map = get_valid_move_resp.moves;
-            console.log(starterPosition)
-            console.log(values_map)
+            // console.log(starterPosition)
+            // console.log(values_map)
             start_game()
         }
     };
@@ -224,6 +224,7 @@ function startDrag(evt) {
     selectedElement = evt.target;
     offset = getMousePosition(evt);
     from_spot = get_spot_from_coords(offset.x, offset.y)
+    console.log(from_spot)
     offset.x -= parseFloat(selectedElement.getAttributeNS(null, "x"));
     offset.y -= parseFloat(selectedElement.getAttributeNS(null, "y"));
   }
@@ -246,7 +247,6 @@ function endDrag(evt) {
     selectedElement.setAttributeNS(null, "x", x_adjusted );
     selectedElement.setAttributeNS(null, "y", y_adjusted);
     to_spot = get_spot_from_coords(coord.x, coord.y)
-    console.log(to_spot)
     update_state(from_spot + to_spot)
   }
   selectedElement = null;
@@ -266,13 +266,13 @@ function show_green_circles(square) {
 
 
 function hide_green_circles(square) {
+ 
   let e = document.getElementById("cir" + square);
   e.style.display = 'none';
 }
 function mouseOver(evt) {
-  if (evt.target.id in values_map) {
-    
-    let squares_to_make_visible = values_map[evt.target.id];
-    squares_to_make_visible.forEach(show_green_circles);
+  if (evt.target.id in values_map) {  
+  let squares_to_make_visible = values_map[evt.target.id];
+   squares_to_make_visible.forEach(show_green_circles);
   }
 }

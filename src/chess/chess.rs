@@ -26,11 +26,18 @@ pub fn get_legal_moves(
     state: &str,
 ) -> (HashMap<String,Vec<String>>, WebGame) {
     let chess = Chess::from(&FenRecord::from(&state.to_owned()));
-    let mut x: FenRecord = FenRecord::from(&chess);
-    println!("{}\n{}",state, x.to_string());
+    let mut fen_record: FenRecord = FenRecord::from(&chess);
+    println!("{}\n{}",state, fen_record.to_string());
     let valid_moves = chess.get_legal_moves().unwrap();
     let web_game:WebGame = WebGame::from(&chess);
     (valid_moves,web_game)
+}
+
+pub fn game_move_piece( state: &str ,chess_move: &str) -> (String, WebGame, HashMap<String,Vec<String>>) {
+    let mut chess = Chess::from(&FenRecord::from(&state.to_owned()));
+    chess.move_piece(&chess_move);
+    let valid_moves = chess.get_legal_moves().unwrap();
+    return (FenRecord::from(&chess).to_string(), WebGame::from(&chess), valid_moves);
 }
 
 #[derive(Debug)]
@@ -301,6 +308,33 @@ impl From<&Chess> for FenRecord {
 }
 
 impl Chess {
+    pub fn move_piece (&mut self ,chess_move: &str)->Result<(), chess_errors::ChessErrors> {
+        let the_move = chess_move.to_lowercase();
+       
+        let from_spot = &the_move[0..2];
+        let to_spot = &the_move[2..4];
+        if let Ok((from, to)) = chess_notation::convert_move_notation_to_indexes(from_spot,to_spot) {
+            let promotion = if the_move.len() > 4 {
+                Some(&the_move[3..])
+            } else {
+                None
+            };
+            let move_type = self.is_move_valid(from_spot, to_spot, promotion)?;
+            let to_piece = std::mem::replace(&mut self.state[from], None);
+            self.state[to] = to_piece;
+            self.player = {
+                match self.player {
+                    Player::Black => Player::White,
+                    Player::White => Player::Black,
+                }
+            }
+        } else {
+            let msg = format!("Invalid notation");
+            return Err(chess_errors::ChessErrors::InvalidNotation(msg));
+        }
+    
+        Ok(())
+    }
 
     pub fn get_legal_moves(&self) -> Result<HashMap<String, Vec<String>>, chess_errors::ChessErrors>{
         
@@ -311,7 +345,7 @@ impl Chess {
             for to_spot in to_spots {
                 if self.is_move_valid(&from_spot, &to_spot , None).is_ok(){
 
-                    legal_moves_vec.push(format!("{}{}",from_spot, to_spot));
+                    legal_moves_vec.push(format!("{}", to_spot));
                 }
             }
             legal_moves_map.insert(from_spot, legal_moves_vec);

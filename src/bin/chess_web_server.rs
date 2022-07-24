@@ -11,7 +11,7 @@ use actix_cors::Cors;
 use actix_web::web::{Data, Json, Path};
 use actix_web::{get, post, App, HttpResponse, HttpServer, Responder};
 
-use recon_mcts::chess::chess::{get_legal_moves,WebGame, FEN_INITIAL_STATE};
+use recon_mcts::chess::chess::{get_legal_moves, game_move_piece, WebGame, FEN_INITIAL_STATE};
 use serde::{Deserialize, Serialize};
 
 #[get("/chess")]
@@ -33,7 +33,8 @@ pub struct ValidMovesResponse {
 
 #[post("/valid_moves")]
 async fn valid_moves(req: Json<ValidMovesRequest>) -> impl Responder {
-    let  (moves_map,web_game) = get_legal_moves(FEN_INITIAL_STATE);
+    
+    let  (moves_map,web_game) = get_legal_moves(&req.fen_state.as_ref().unwrap());
     
     
     let mut resp = ValidMovesResponse {
@@ -43,6 +44,32 @@ async fn valid_moves(req: Json<ValidMovesRequest>) -> impl Responder {
     HttpResponse::Ok().json(resp)
 }
 
+#[derive(Debug, Deserialize, Serialize)]
+pub struct MoveRequest {
+    pub current_fen_state: Option<String>,
+    pub chess_move: Option<String>,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct MoveResponse {
+    pub resulting_fen: String,
+    pub web_game: WebGame,
+    moves: HashMap<String,Vec<String>>,
+}
+
+#[post("/move_req")]
+async fn move_piece(req: Json<MoveRequest>) -> impl Responder {
+    
+    let  (fen_string, web_game, moves_map) = game_move_piece(&req.current_fen_state.as_ref().unwrap(), &req.chess_move.as_ref().unwrap());
+    
+    
+    let mut resp = MoveResponse {
+        resulting_fen: fen_string,
+        web_game: web_game,
+        moves: moves_map,
+    };
+    HttpResponse::Ok().json(resp)
+}
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
@@ -51,6 +78,7 @@ async fn main() -> std::io::Result<()> {
             .wrap(Cors::permissive() )
             .service(hello)
             .service(valid_moves)
+            .service(move_piece)
     })
     .bind(("127.0.0.1", 9090))?
     .run()

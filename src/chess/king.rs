@@ -72,6 +72,32 @@ pub(crate) fn get_king_unvalidated_moves(
             .or_insert_with(|| Vec::new())
             .push(right.to_string());
     }
+    //add castling moves
+    let col = chess_notation::convert_col(spot).unwrap();
+    let row = chess_notation::convert_row(spot).unwrap();
+    if col == 4 && row == 7 {
+        //white
+        unvalidated_moves
+        .entry(spot.to_owned())
+        .or_insert_with(|| Vec::new())
+        .push("g1".to_string());
 
+        unvalidated_moves
+        .entry(spot.to_owned())
+        .or_insert_with(|| Vec::new())
+        .push("c1".to_string());
+    } else if  col == 4 && row == 0  {
+        //black
+        unvalidated_moves
+        .entry(spot.to_owned())
+        .or_insert_with(|| Vec::new())
+        .push("g8".to_string());
+
+        unvalidated_moves
+        .entry(spot.to_owned())
+        .or_insert_with(|| Vec::new())
+        .push("c8".to_string());
+
+    }
     Ok(unvalidated_moves)
 }

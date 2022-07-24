@@ -18,7 +18,7 @@ const colorArray = ["#774C3B","#C99468","#774C3B","#C99468","#774C3B","#C99468",
 const fen_initial_state= "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
 var starterPosition;
-var current_fen_state = "rnbqk2r/pppp1ppp/3bpn2/8/8/3PB3/PPPNPPPP/R1Q1KBNR b KQkq - 0 1"
+var current_fen_state = "r3k2r/1bppqppp/ppnbpn2/8/8/1P1PBNP1/PQPNPPBP/R3K2R b KQkq - 0 1"
 var from_spot;
 
 getValidMoves(); //only call when turn changes

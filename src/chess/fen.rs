@@ -128,6 +128,7 @@ impl From<&FenRecord> for Chess {
                 'w' => Player::White,
                 _ => Player::Black,
             },
+            en_passant_enabled: None,
         }
     }
 }

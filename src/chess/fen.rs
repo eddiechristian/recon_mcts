@@ -4,12 +4,12 @@ use super::chess::{Chess, Piece, PieceType, FEN_INITIAL_STATE, INIT};
 
 use super::chess_mcts::Player;
 pub(crate) struct FenRecord {
-    piece_placement_data: String,
-    player: char,
-    castling: String,
-    en_passant_target: String,
-    halfmove_clock: u8,
-    full_move_number: u16,
+    pub piece_placement_data: String,
+    pub player: char,
+    pub castling: String,
+    pub en_passant_target: String,
+    pub halfmove_clock: u8,
+    pub full_move_number: u16,
 }
 
 impl From<&FenRecord> for Chess {
@@ -122,13 +122,13 @@ impl From<&FenRecord> for Chess {
         Chess {
             state,
             full_move_number: fen_record.full_move_number,
-            castling: fen_record.castling.clone(),
+            castling: Some(fen_record.castling.clone()),
             halfmove_clock: fen_record.halfmove_clock,
             player: match fen_record.player {
                 'w' => Player::White,
                 _ => Player::Black,
             },
-            en_passant_enabled: None,
+            en_passant_target: None,
         }
     }
 }

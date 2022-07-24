@@ -1,11 +1,12 @@
+use core::num;
 use std::{collections::HashMap, convert::From, fmt::format};
 
 use crate::chess::{chess_mcts::Player, king::get_king_unvalidated_moves};
 
 use super::{
     chess_errors, chess_notation, fen::FenRecord, knight::get_knight_unvalidated_moves,
-    pawn::get_pawn_unvalidated_moves, queen::get_queen_unvalidated_moves,
-    rook::get_rook_unvalidated_moves,
+    pawn::get_pawn_unvalidated_moves, pawn::move_pawn_vertical , pawn::move_pawn_diagonal,
+    queen::get_queen_unvalidated_moves, rook::get_rook_unvalidated_moves,
 };
 
 pub(crate) const INIT: Option<Piece> = None;
@@ -19,11 +20,14 @@ pub fn get_avaiable_actions(state: &str) -> Vec<[char; 5]> {
 
     a
 }
-pub fn get_unvalidated_moves(
+pub fn get_legal_moves(
     state: &str,
 ) -> Result<HashMap<String, Vec<String>>, chess_errors::ChessErrors> {
     let chess = Chess::from(&FenRecord::from(&state.to_owned()));
-    return chess.get_unvalidated_moves();
+    let mut x: FenRecord = FenRecord::from(&chess);
+    println!("{}\n{}",state, x.to_string());
+    chess.get_legal_moves()
+    
 }
 
 #[derive(Debug)]
@@ -38,11 +42,11 @@ pub enum Direction {
     DownRight
 }
 
-pub enum MoveType {
+pub(crate) enum MoveType {
     Enpassant(usize),
     Castling,
     Regular,
-    Promotion(char)
+    Promotion(PieceType)
 }
 
 #[derive(Debug, PartialEq)]
@@ -138,7 +142,7 @@ impl Piece {
                 Ok((to_spot.to_string(),MoveType::Regular))
             }
             PieceType::BlackPawn | PieceType::WhitePawn => {
-                todo!()
+                move_pawn_vertical(self, to_spot, state, delta_y, promotion)
             }
 
         }
@@ -161,7 +165,7 @@ impl Piece {
                  Ok(to_spot.to_string())
              }
              PieceType::BlackPawn | PieceType::WhitePawn => {
-                 todo!()
+                move_pawn_diagonal(self, to_spot, state, delta_y, promotion)
              }
  
          }
@@ -177,7 +181,7 @@ impl Piece {
                 return Err(chess_errors::ChessErrors::InvalidMove(msg));
             }
             PieceType::BlackKnight | PieceType::WhiteKnight => {
-                todo!()
+                Ok(to_spot.to_string())
             }
     }
 }
@@ -186,13 +190,94 @@ impl Piece {
 pub(crate) struct Chess {
     pub state: [Option<Piece>; 64],
     pub player: Player,
-    pub castling: String,
+    pub castling: Option<String>,
     pub halfmove_clock: u8,
     pub full_move_number: u16,
-    pub en_passant_enabled: Option<String>,
+    pub en_passant_target: Option<String>,
+}
+
+impl From<&Chess> for FenRecord {
+    fn from(chess: &Chess) -> Self {
+        let mut piece_placement_data = "".to_owned();
+        let mut num_empty = 0;
+        for (index, piece_opt) in chess.state.iter().enumerate() {
+            if index != 0 && index % 8 == 0 {
+               if num_empty > 0 {
+                    piece_placement_data.push_str(&format!("{}", num_empty));
+                }
+                piece_placement_data.push_str("/");
+                num_empty = 0;
+            }
+            if let Some(piece) = piece_opt {
+                if num_empty > 0 {
+                    piece_placement_data.push_str(&format!("{}", num_empty));
+                    num_empty = 0;
+                } else {
+                    let piece_type =
+                    match piece.piece_type {
+                        PieceType::BlackBishop => "b",
+                        PieceType::BlackKing =>   "k",
+                        PieceType::BlackKnight => "n",
+                        PieceType::BlackPawn =>   "p",
+                        PieceType::BlackQueen =>  "q",
+                        PieceType::BlackRook =>   "r",
+                        PieceType::WhiteBishop => "B",
+                        PieceType::WhiteKing =>   "K",
+                        PieceType::WhiteKnight => "N",
+                        PieceType::WhitePawn =>   "P",
+                        PieceType::WhiteQueen =>  "Q",
+                        PieceType::WhiteRook =>   "R",
+
+                    };
+                    piece_placement_data.push_str(piece_type);
+                }
+            } else {
+                num_empty+= 1;
+            }
+        }
+        let player = match chess.player {
+            Player::Black => 'b',
+            Player::White => 'w'
+        };
+        let en_passant_target = match &chess.en_passant_target {
+            Some(target) => target.clone(),
+            None => "-".to_owned()
+        };
+        let castling = match &chess.castling {
+            Some(castling) => castling.clone(),
+            None => "-".to_owned()
+        };
+        FenRecord {
+            piece_placement_data: piece_placement_data,
+            player: player,
+            castling: castling,
+            en_passant_target: en_passant_target,
+            halfmove_clock: chess.halfmove_clock,
+            full_move_number: chess.full_move_number,
+        }
+    }
 }
 
 impl Chess {
+
+    pub fn get_legal_moves(&self) -> Result<HashMap<String, Vec<String>>, chess_errors::ChessErrors>{
+        
+        let mut legal_moves_map = HashMap::new();
+        let mut unvalidated_moves = self.get_unvalidated_moves();
+       for (from_spot, to_spots) in unvalidated_moves.unwrap() {
+            let mut legal_moves_vec = Vec::new();
+            for to_spot in to_spots {
+                if self.is_move_valid(&from_spot, &to_spot , None).is_ok(){
+
+                    legal_moves_vec.push(format!("{}{}",from_spot, to_spot));
+                }
+            }
+            legal_moves_map.insert(from_spot, legal_moves_vec);
+       }
+        //println!("validated_moves: {:?}", legal_moves_map);
+        Ok(legal_moves_map)
+    }
+
     pub fn get_unvalidated_moves(
         &self,
     ) -> Result<HashMap<String, Vec<String>>, chess_errors::ChessErrors> {
@@ -200,6 +285,7 @@ impl Chess {
         let mut unvalidated_moves = HashMap::new();
         for (index, piece_opt) in self.state.iter().enumerate() {
             if let Some(piece) = piece_opt {
+                if piece.get_player() == self.player {
                 match piece.piece_type {
                     PieceType::WhitePawn | PieceType::BlackPawn => {
                         let mut unvalidated_moves_pawn = get_pawn_unvalidated_moves(
@@ -215,57 +301,122 @@ impl Chess {
                         }
                         //check for promotion
                         let row = index/8;
-                        if row == 6 &&  piece.piece_type == PieceType::WhitePawn{
-                            todo!("Add diagonal");
+                        let col = index % 8;
+                        if row == 1 &&  piece.piece_type == PieceType::WhitePawn{
+                            let mut unvalidated_moves_vec = Vec::new();
                             let spot = chess_notation::index_to_spot(index);
+
                             let to_spot_queen = format!("{}8q",spot.chars().nth(0).unwrap());
                             let to_spot_rook = format!("{}8r",spot.chars().nth(0).unwrap());
                             let to_spot_knight = format!("{}8n",spot.chars().nth(0).unwrap());
                             let to_spot_bishop = format!("{}8b",spot.chars().nth(0).unwrap());
-                            unvalidated_moves.insert(spot.clone(), Vec::new());
+                            unvalidated_moves_vec.push(to_spot_queen);
+                            unvalidated_moves_vec.push(to_spot_rook);
+                            unvalidated_moves_vec.push(to_spot_knight);
+                            unvalidated_moves_vec.push(to_spot_bishop);
+                            
+                            if col ==0 {
+                                let right_spot= chess_notation::index_to_spot(index+1); 
+                                let right_to_spot_queen = format!("{}8q",right_spot.chars().nth(0).unwrap());
+                                let right_to_spot_rook = format!("{}8r",right_spot.chars().nth(0).unwrap());
+                                let right_to_spot_knight = format!("{}8n",right_spot.chars().nth(0).unwrap());
+                                let right_to_spot_bishop = format!("{}8b",right_spot.chars().nth(0).unwrap());
+                                unvalidated_moves_vec.push(right_to_spot_queen);
+                                unvalidated_moves_vec.push(right_to_spot_rook);
+                                unvalidated_moves_vec.push(right_to_spot_knight);
+                                unvalidated_moves_vec.push(right_to_spot_bishop);
+                            }else if col == 7 {
+                                let left_spot= chess_notation::index_to_spot(index-1); 
+                                let left_to_spot_queen = format!("{}8q",left_spot.chars().nth(0).unwrap());
+                                let left_to_spot_rook = format!("{}8r",left_spot.chars().nth(0).unwrap());
+                                let left_to_spot_knight = format!("{}8n",left_spot.chars().nth(0).unwrap());
+                                let left_to_spot_bishop = format!("{}8b",left_spot.chars().nth(0).unwrap());
+                                unvalidated_moves_vec.push(left_to_spot_queen);
+                                unvalidated_moves_vec.push(left_to_spot_rook);
+                                unvalidated_moves_vec.push(left_to_spot_knight);
+                                unvalidated_moves_vec.push(left_to_spot_bishop);
+                            }else {
+                                let right_spot= chess_notation::index_to_spot(index+1); 
+                                let right_to_spot_queen = format!("{}8q",right_spot.chars().nth(0).unwrap());
+                                let right_to_spot_rook = format!("{}8r",right_spot.chars().nth(0).unwrap());
+                                let right_to_spot_knight = format!("{}8n",right_spot.chars().nth(0).unwrap());
+                                let right_to_spot_bishop = format!("{}8b",right_spot.chars().nth(0).unwrap());
+                                unvalidated_moves_vec.push(right_to_spot_queen);
+                                unvalidated_moves_vec.push(right_to_spot_rook);
+                                unvalidated_moves_vec.push(right_to_spot_knight);
+                                unvalidated_moves_vec.push(right_to_spot_bishop);
+                                let left_spot= chess_notation::index_to_spot(index-1); 
+                                let left_to_spot_queen = format!("{}8q",left_spot.chars().nth(0).unwrap());
+                                let left_to_spot_rook = format!("{}8r",left_spot.chars().nth(0).unwrap());
+                                let left_to_spot_knight = format!("{}8n",left_spot.chars().nth(0).unwrap());
+                                let left_to_spot_bishop = format!("{}8b",left_spot.chars().nth(0).unwrap());
+                                unvalidated_moves_vec.push(left_to_spot_queen);
+                                unvalidated_moves_vec.push(left_to_spot_rook);
+                                unvalidated_moves_vec.push(left_to_spot_knight);
+                                unvalidated_moves_vec.push(left_to_spot_bishop);
+                            }
                             unvalidated_moves
-                                .entry(spot.to_owned())
-                                .or_insert_with(|| Vec::new())
-                                .push(to_spot_queen);
-                            unvalidated_moves
-                            .entry(spot.to_owned())
+                            .entry(spot)
                             .or_insert_with(|| Vec::new())
-                            .push(to_spot_rook);
-                            unvalidated_moves
-                            .entry(spot.to_owned())
-                            .or_insert_with(|| Vec::new())
-                            .push(to_spot_knight);
-                            unvalidated_moves
-                            .entry(spot.to_owned())
-                            .or_insert_with(|| Vec::new())
-                            .push(to_spot_bishop);
-                        } else if row == 1 &&  piece.piece_type == PieceType::BlackPawn{
-                            todo!("Add diagonal");
+                            .append(&mut unvalidated_moves_vec);
+                        } else if row == 6 &&  piece.piece_type == PieceType::BlackPawn{
+                            let mut unvalidated_moves_vec = Vec::new();
+
                             let spot = chess_notation::index_to_spot(index);
                             let to_spot_queen = format!("{}1q",spot.chars().nth(0).unwrap());
                             let to_spot_rook = format!("{}1r",spot.chars().nth(0).unwrap());
                             let to_spot_knight = format!("{}1n",spot.chars().nth(0).unwrap());
                             let to_spot_bishop = format!("{}1b",spot.chars().nth(0).unwrap());
-                            unvalidated_moves.insert(spot.clone(), Vec::new());
-
+                            unvalidated_moves_vec.push(to_spot_queen);
+                            unvalidated_moves_vec.push(to_spot_rook);
+                            unvalidated_moves_vec.push(to_spot_knight);
+                            unvalidated_moves_vec.push(to_spot_bishop);
+                            if col ==0 {
+                                let right_spot= chess_notation::index_to_spot(index+1); 
+                                let right_to_spot_queen = format!("{}1q",right_spot.chars().nth(0).unwrap());
+                                let right_to_spot_rook = format!("{}1r",right_spot.chars().nth(0).unwrap());
+                                let right_to_spot_knight = format!("{}1n",right_spot.chars().nth(0).unwrap());
+                                let right_to_spot_bishop = format!("{}1b",right_spot.chars().nth(0).unwrap());
+                                unvalidated_moves_vec.push(right_to_spot_queen);
+                                unvalidated_moves_vec.push(right_to_spot_rook);
+                                unvalidated_moves_vec.push(right_to_spot_knight);
+                                unvalidated_moves_vec.push(right_to_spot_bishop);
+                            }else if col == 7 {
+                                let left_spot= chess_notation::index_to_spot(index-1); 
+                                let left_to_spot_queen = format!("{}1q",left_spot.chars().nth(0).unwrap());
+                                let left_to_spot_rook = format!("{}1r",left_spot.chars().nth(0).unwrap());
+                                let left_to_spot_knight = format!("{}1n",left_spot.chars().nth(0).unwrap());
+                                let left_to_spot_bishop = format!("{}1b",left_spot.chars().nth(0).unwrap());
+                                unvalidated_moves_vec.push(left_to_spot_queen);
+                                unvalidated_moves_vec.push(left_to_spot_rook);
+                                unvalidated_moves_vec.push(left_to_spot_knight);
+                                unvalidated_moves_vec.push(left_to_spot_bishop);
+                            } else {
+                                let right_spot= chess_notation::index_to_spot(index+1); 
+                                let right_to_spot_queen = format!("{}1q",right_spot.chars().nth(0).unwrap());
+                                let right_to_spot_rook = format!("{}1r",right_spot.chars().nth(0).unwrap());
+                                let right_to_spot_knight = format!("{}1n",right_spot.chars().nth(0).unwrap());
+                                let right_to_spot_bishop = format!("{}1b",right_spot.chars().nth(0).unwrap());
+                                unvalidated_moves_vec.push(right_to_spot_queen);
+                                unvalidated_moves_vec.push(right_to_spot_rook);
+                                unvalidated_moves_vec.push(right_to_spot_knight);
+                                unvalidated_moves_vec.push(right_to_spot_bishop);
+                                let left_spot= chess_notation::index_to_spot(index-1); 
+                                let left_to_spot_queen = format!("{}1q",left_spot.chars().nth(0).unwrap());
+                                let left_to_spot_rook = format!("{}1r",left_spot.chars().nth(0).unwrap());
+                                let left_to_spot_knight = format!("{}1n",left_spot.chars().nth(0).unwrap());
+                                let left_to_spot_bishop = format!("{}1b",left_spot.chars().nth(0).unwrap());
+                                unvalidated_moves_vec.push(left_to_spot_queen);
+                                unvalidated_moves_vec.push(left_to_spot_rook);
+                                unvalidated_moves_vec.push(left_to_spot_knight);
+                                unvalidated_moves_vec.push(left_to_spot_bishop);
+                            }
                             unvalidated_moves
-                                .entry(spot.to_owned())
-                                .or_insert_with(|| Vec::new())
-                                .push(to_spot_queen);
-                            unvalidated_moves
-                            .entry(spot.to_owned())
+                            .entry(spot)
                             .or_insert_with(|| Vec::new())
-                            .push(to_spot_rook);
-                            unvalidated_moves
-                            .entry(spot.to_owned())
-                            .or_insert_with(|| Vec::new())
-                            .push(to_spot_knight);
-                            unvalidated_moves
-                            .entry(spot.to_owned())
-                            .or_insert_with(|| Vec::new())
-                            .push(to_spot_bishop);
-                            println!("pawn unvalidated {:?}",unvalidated_moves );
+                            .append(&mut unvalidated_moves_vec);
                         }
+                        println!("unvalidated_moves {:?}", unvalidated_moves);
                     }
                     PieceType::WhiteRook | PieceType::BlackRook => {
                         let mut unvalidated_moves_rook = get_rook_unvalidated_moves(
@@ -335,16 +486,17 @@ impl Chess {
                     _ => {}
                 }
             }
+            }
         }
        
         Ok(unvalidated_moves)
     }
 
-    pub fn is_move_valid(&self, from_spot: &str, to_spot: &str, whos_turn: Player, promotion_opt: Option<&str>)->Result<(MoveType), chess_errors::ChessErrors> {
+    pub fn is_move_valid(&self, from_spot: &str, to_spot: &str, promotion_opt: Option<&str>)->Result<(MoveType), chess_errors::ChessErrors> {
         // first determine if piece at from is correct player.
         if let Ok(index) = chess_notation::notation_to_index(&from_spot) {
             if let Some(piece) = &self.state[index] {
-                if piece.get_player() != whos_turn{
+                if piece.get_player() != self.player{
                     let msg = format!("{}",from_spot);
                     return Err(chess_errors::ChessErrors::WrongPlayer(msg));
                 }
@@ -356,7 +508,7 @@ impl Chess {
         //if too spot is current player its invalid
         if let Ok(index) = chess_notation::notation_to_index(&to_spot) {
             if let Some(piece) = &self.state[index] {
-                if piece.get_player() == whos_turn{
+                if piece.get_player() == self.player{
                     let msg = format!("{}",to_spot);
                     return Err(chess_errors::ChessErrors::PlayerPieceAlreadyThere(msg));
                 }
@@ -366,11 +518,11 @@ impl Chess {
             //promotions are only valid from 8th rank for pawn
             let from_row = chess_notation::convert_row(from_spot)?;
             let to_row = chess_notation::convert_row(to_spot)?;
-            if whos_turn == Player::White && to_row !=  0 &&  from_row != 1 {
+            if self.player == Player::White && to_row !=  0 &&  from_row != 1 {
                 let msg = format!("{}",to_spot);
                 return Err(chess_errors::ChessErrors::InvalidPromotion(msg));
             }
-            if whos_turn == Player::Black && to_row != 8 && from_row!= 7 {
+            if self.player == Player::Black && to_row != 8 && from_row!= 7 {
                 let msg = format!("{}",to_spot);
                 return Err(chess_errors::ChessErrors::InvalidPromotion(msg));
             }

@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use super::{
-    chess::Piece,
+    chess::{Piece, MoveType, PieceType},
     chess_errors,
     chess_mcts::Player,
     chess_notation::{self},
@@ -89,4 +89,110 @@ pub(crate) fn get_pawn_unvalidated_moves(
     }
 
     Ok(unvalidated_moves)
+}
+
+pub(crate) fn  move_pawn_vertical(piece: &Piece, to_spot: &str, state: &[Option<Piece>; 64], delta_y: i8, promotion_opt: Option<&str>) -> Result<(String,MoveType), chess_errors::ChessErrors>{
+    if let Ok(index) = chess_notation::notation_to_index(&to_spot) {
+        if  let Some(piece) = &state[index]{
+            if piece.get_player() != piece.get_player(){
+                 //pawns cannot attack forward
+                let msg = format!("{}",to_spot);
+                return Err(chess_errors::ChessErrors::PawnCantAttackForward(msg));
+            }
+        }
+    }
+    if delta_y.abs() > 2 {
+        //pawns cannot move vert more than 2
+        let msg = format!("{}",to_spot);
+        return Err(chess_errors::ChessErrors::InvalidMove(msg));
+    }
+    if delta_y.abs() == 2 {
+         //pawns cannot move vert more than 1, if they moved before
+         if piece.moved == true {
+            let msg = format!("{}",to_spot);
+            return Err(chess_errors::ChessErrors::InvalidMove(msg));
+         }
+    }
+    if piece.get_player() == Player::Black && delta_y > 0 {
+        //black pawn cannot move up
+        let msg = format!("{}",to_spot);
+        return Err(chess_errors::ChessErrors::InvalidMove(msg));
+    } else if piece.get_player() == Player::White && delta_y < 0 {
+        //white pawn cannot move down
+        let msg = format!("{}",to_spot);
+        return Err(chess_errors::ChessErrors::InvalidMove(msg));
+    }
+    //check for promotion
+    if let Ok(row) =chess_notation::convert_row(to_spot){
+        if piece.get_player() == Player::Black {
+            if row == 7 {
+                match promotion_opt {
+                    None => {
+                        return Ok((to_spot.to_string(),MoveType::Promotion(PieceType::BlackQueen)))
+                    },
+                    Some(promotion) => {
+                        match promotion {
+                            "r" => {
+                                return Ok((to_spot.to_string(),MoveType::Promotion(PieceType::BlackRook)));
+                            },
+                            "b" => {
+                                return Ok((to_spot.to_string(),MoveType::Promotion(PieceType::BlackBishop)));
+                            },
+                            "k" => {
+                                return Ok((to_spot.to_string(),MoveType::Promotion(PieceType::BlackKnight)));
+                            },
+                            _ => {
+                                return Ok((to_spot.to_string(),MoveType::Promotion(PieceType::BlackQueen)));
+                            },
+                        }
+                    }
+                }
+            }
+        } else {
+            if row == 0 {
+                match promotion_opt {
+                    None => {
+                        return Ok((to_spot.to_string(),MoveType::Promotion(PieceType::WhiteQueen)))
+                    },
+                    Some(promotion) => {
+                        match promotion {
+                            "r" => {
+                                return Ok((to_spot.to_string(),MoveType::Promotion(PieceType::WhiteRook)));
+                            },
+                            "b" => {
+                                return Ok((to_spot.to_string(),MoveType::Promotion(PieceType::WhiteBishop)));
+                            },
+                            "k" => {
+                                return Ok((to_spot.to_string(),MoveType::Promotion(PieceType::WhiteKnight)));
+                            },
+                            _ => {
+                                return Ok((to_spot.to_string(),MoveType::Promotion(PieceType::WhiteQueen)));
+                            },
+                        }
+                        
+                    }
+                }
+            }
+        }   
+    }
+   
+    Ok((to_spot.to_string(),MoveType::Regular))
+}
+pub(crate) fn  move_pawn_diagonal( piece: &Piece, to_spot: &str, state: &[Option<Piece>; 64], delta_y: i8, promotion: Option<&str>) -> Result<String, chess_errors::ChessErrors>{
+    if piece.get_player() == Player::Black && delta_y > 0 {
+        //black pawn annot move up
+        let msg = format!("{}",to_spot);
+        return Err(chess_errors::ChessErrors::InvalidMove(msg));
+    } else if piece.get_player() == Player::White && delta_y < 0 {
+        //white pawn cannot move down
+        let msg = format!("{}",to_spot);
+        return Err(chess_errors::ChessErrors::InvalidMove(msg));
+    }
+    if let Ok(index) = chess_notation::notation_to_index(&to_spot) {
+        if  state[index].is_none() {
+            let msg = format!("{}",to_spot);
+            return Err(chess_errors::ChessErrors::PawnCanOnlyAttackDiagonal(msg));
+        }
+    }
+    Ok(to_spot.to_string())
 }

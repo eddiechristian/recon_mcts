@@ -1,6 +1,8 @@
 use core::num;
 use std::{collections::HashMap, convert::From, fmt::format};
 
+use serde::{Deserialize, Serialize};
+
 use crate::chess::{chess_mcts::Player, king::get_king_unvalidated_moves};
 
 use super::{
@@ -22,12 +24,13 @@ pub fn get_avaiable_actions(state: &str) -> Vec<[char; 5]> {
 }
 pub fn get_legal_moves(
     state: &str,
-) -> Result<HashMap<String, Vec<String>>, chess_errors::ChessErrors> {
+) -> (HashMap<String,Vec<String>>, WebGame) {
     let chess = Chess::from(&FenRecord::from(&state.to_owned()));
     let mut x: FenRecord = FenRecord::from(&chess);
     println!("{}\n{}",state, x.to_string());
-    chess.get_legal_moves()
-    
+    let valid_moves = chess.get_legal_moves().unwrap();
+    let web_game:WebGame = WebGame::from(&chess);
+    (valid_moves,web_game)
 }
 
 #[derive(Debug)]
@@ -185,6 +188,45 @@ impl Piece {
             }
     }
 }
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct WebGame {
+    state: [[char;8];8],
+}
+
+impl From<&Chess> for WebGame {
+    fn from(chess: &Chess) -> Self {
+        let mut state = [['.';8];8];
+        for (index, piece_opt) in chess.state.iter().enumerate() {
+            let piece_type =
+            match piece_opt {
+                Some(piece) =>{
+                    match piece.piece_type {
+                        PieceType::BlackBishop => 'b',
+                        PieceType::BlackKing =>   'k',
+                        PieceType::BlackKnight => 'n',
+                        PieceType::BlackPawn =>   'p',
+                        PieceType::BlackQueen =>  'q',
+                        PieceType::BlackRook =>   'r',
+                        PieceType::WhiteBishop => 'B',
+                        PieceType::WhiteKing =>   'K',
+                        PieceType::WhiteKnight => 'N',
+                        PieceType::WhitePawn =>   'P',
+                        PieceType::WhiteQueen =>  'Q',
+                        PieceType::WhiteRook =>   'R',
+                    }
+                }
+                None => '.',
+            };
+            let row = index /8;
+            let col = index % 8;
+            state[row][col]=piece_type;
+        }
+        WebGame {
+            state,
+        }
+    }
 }
 
 pub(crate) struct Chess {

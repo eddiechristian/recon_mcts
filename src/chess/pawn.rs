@@ -203,12 +203,18 @@ pub(crate) fn  move_pawn_diagonal( piece: &Piece, to_spot: &str, state: &[Option
                         return Ok((to_spot.to_string(),MoveType::Enpassant(attack_index)));
                     }
                     
+                }else {
+                    let msg = format!("{}",to_spot);
+                    return Err(chess_errors::ChessErrors::PawnCanOnlyAttackDiagonal(msg));
                 }
             }
             else {
                 let msg = format!("{}",to_spot);
                 return Err(chess_errors::ChessErrors::PawnCanOnlyAttackDiagonal(msg));
             }
+        }else {
+            let msg = format!("{}",to_spot);
+            return Err(chess_errors::ChessErrors::PawnCanOnlyAttackDiagonal(msg));
         }
     }
     if let Ok(row) =chess_notation::convert_row(to_spot){

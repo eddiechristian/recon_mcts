@@ -339,7 +339,6 @@ impl From<&Chess> for FenRecord {
 impl Chess {
     pub fn move_piece (&mut self ,chess_move: &str)->Result<(), chess_errors::ChessErrors> {
         let the_move = chess_move.to_lowercase();
-        print!("the_move {:?}",the_move);
         let from_spot = &the_move[0..2];
         let to_spot = &the_move[2..4];
         if let Ok((from, to)) = chess_notation::convert_move_notation_to_indexes(from_spot,to_spot) {
@@ -388,7 +387,6 @@ impl Chess {
                     self.en_passant_target = Some(enpassant_spot);
                 }
             }
-            print!("kkkk");
             //here down we are mutating state.... we should mutate a cloned state and then test for check with cloned state
             let to_piece = std::mem::replace(&mut self.state[from], None);
             if let MoveType::Promotion(piece_type) =  move_type.clone() {
@@ -424,9 +422,7 @@ impl Chess {
                     self.state[chess_notation::notation_to_index("d1").unwrap()] = to_piece;
                 }
             }
-            println!("move_type {:?}",move_type);
             if let MoveType::Enpassant(index) =  move_type.clone() { 
-                println!("llll");
                 std::mem::replace(&mut self.state[index], None);
             }
             self.state[to] = to_piece;
@@ -730,6 +726,7 @@ impl Chess {
                 }
             }; 
             if delta_y.abs() !=1 {
+                println!("hello");
                 self.is_path_blocked(from_spot, to_spot, dir)?;
             }
             if let Ok(index) = chess_notation::notation_to_index(&from_spot) {
@@ -785,7 +782,6 @@ impl Chess {
                         if let (_, MoveType::Promotion(new_piece)) = piece.move_diagonal(to_spot, &self.state, delta_y, promotion_opt, self.en_passant_target.clone())?{
                             return Ok(MoveType::Promotion(new_piece));
                         }else if let (_, MoveType::Enpassant(index)) = piece.move_diagonal(to_spot, &self.state, delta_y, promotion_opt, self.en_passant_target.clone())?{
-                            println!("enpassant move");
                             return Ok(MoveType::Enpassant(index));
                         }
                     }
@@ -846,18 +842,13 @@ impl Chess {
                     }
                     if let Ok(index) = chess_notation::notation_to_index(&pos) {
                         if let Some(piece) = &self.state[index] {
-                            if piece.get_player() == self.player{
-                                return Err(chess_errors::ChessErrors::PieceBetween(pos));
-                            }
+                            return Err(chess_errors::ChessErrors::PieceBetween(pos));
                         }
                     }
                 }else {
-                    println!("oops1");
                     return Err(chess_errors::ChessErrors::InvalidNotation(pos.to_string()));
                 }
             } else {
-
-                println!("oops2");
                 return Err(chess_errors::ChessErrors::InvalidNotation(pos.to_string()));
             }
            

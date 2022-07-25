@@ -93,8 +93,8 @@ pub(crate) fn get_pawn_unvalidated_moves(
 
 pub(crate) fn  move_pawn_vertical(piece: &Piece, to_spot: &str, state: &[Option<Piece>; 64], delta_y: i8, promotion_opt: Option<&str>) -> Result<(String,MoveType), chess_errors::ChessErrors>{
     if let Ok(index) = chess_notation::notation_to_index(&to_spot) {
-        if  let Some(piece) = &state[index]{
-            if piece.get_player() != piece.get_player(){
+        if  let Some(forward_piece) = &state[index]{
+            if forward_piece.get_player() != piece.get_player(){
                  //pawns cannot attack forward
                 let msg = format!("{}",to_spot);
                 return Err(chess_errors::ChessErrors::PawnCantAttackForward(msg));

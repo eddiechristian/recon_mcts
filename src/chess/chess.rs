@@ -726,7 +726,6 @@ impl Chess {
                 }
             }; 
             if delta_y.abs() !=1 {
-                println!("hello");
                 self.is_path_blocked(from_spot, to_spot, dir)?;
             }
             if let Ok(index) = chess_notation::notation_to_index(&from_spot) {

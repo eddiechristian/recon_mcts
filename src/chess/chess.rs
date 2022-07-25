@@ -1,5 +1,5 @@
 use core::num;
-use std::{collections::HashMap, convert::From, fmt::format};
+use std::{collections::HashMap, convert::From, fmt::format, cell::RefCell};
 
 use serde::{Deserialize, Serialize};
 
@@ -13,7 +13,7 @@ use super::{
 
 pub(crate) const INIT: Option<Piece> = None;
 
-pub const FEN_INITIAL_STATE: &str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+pub const FEN_INITIAL_STATE: &str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 0";
 
 /// returns UCI long algebraic notation
 /// examples:  e2e4, e7e5, e1g1 (for white short castling), e7e8q (for promotion)
@@ -267,6 +267,13 @@ pub(crate) struct ChessState {
     pub st: [Option<Piece>; 64],
 }
 
+#[derive(Debug, Clone, PartialEq)]
+pub(crate) enum GameResult {
+    WhiteWins,
+    BlackWins,
+    Stalemate,
+}
+
 #[derive(Debug, Clone)]
 pub(crate) struct Chess {
     pub state: ChessState,
@@ -275,6 +282,7 @@ pub(crate) struct Chess {
     pub halfmove_clock: u8,
     pub full_move_number: u16,
     pub en_passant_target: Option<String>,
+    pub game_over: RefCell<Option<GameResult>>,
 }
 
 impl From<&Chess> for FenRecord {
@@ -342,7 +350,9 @@ impl From<&Chess> for FenRecord {
 }
 
 impl Chess {
-
+    pub fn getGameResult (&self) -> &RefCell<Option<GameResult>>{
+        return &self.game_over;
+    }
     pub fn check_for_check (cloned_game: &mut Chess ,chess_move: &str)->Result<(), chess_errors::ChessErrors> {
         let the_move = chess_move.to_lowercase();
         let from_spot = &the_move[0..2];
@@ -508,8 +518,11 @@ impl Chess {
                     en_passant_set_this_move = true
                 }
             }
-            //here down we are mutating state.... we should mutate a cloned state and then test for check with cloned state
+            //here down we are mutating state.
             let to_piece = std::mem::replace(&mut self.state.st[from], None);
+            if let Some(to_piece) =&self.state.st[to] {
+                self.halfmove_clock = 0;
+            }
             if let MoveType::Promotion(piece_type) =  move_type.clone() {
                 let piece = Piece {
                     piece_type,
@@ -555,6 +568,11 @@ impl Chess {
            //clear enpassant
            if !en_passant_set_this_move {
             self.en_passant_target = None;
+           }
+           self.full_move_number += 1;
+           self.halfmove_clock += 1;
+           if self.halfmove_clock > 51 {
+            *self.game_over.borrow_mut() = Some(GameResult::Stalemate);
            }
            
         } else {
@@ -607,13 +625,12 @@ impl Chess {
        }
         if legal_moves_map.is_empty() {
             let winner = match self.player{
-                Player::White => Player::Black,
-                Player::Black => Player::White,
+                Player::White => GameResult::BlackWins,
+                Player::Black => GameResult::WhiteWins,
 
             };
             println!("Game Over! Winner {:?}", winner);
-        }else {
-            println!("legal_moves_map.len() {:?} self.player {:?}", legal_moves_map.len(), self.player);
+            *self.game_over.borrow_mut() = Some(winner);
         }
         Ok(legal_moves_map)
     }

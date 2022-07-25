@@ -1,3 +1,4 @@
+use std::cell::RefCell;
 use std::fmt;
 
 use super::chess::{Chess, Piece, PieceType, FEN_INITIAL_STATE, INIT, ChessState};
@@ -118,6 +119,7 @@ impl From<&FenRecord> for Chess {
                 _ => Player::Black,
             },
             en_passant_target:  Some(fen_record.en_passant_target.clone()),
+            game_over: RefCell::new(None),
         }
     }
 }

@@ -600,9 +600,21 @@ impl Chess {
                     }
                 }
             }
-            legal_moves_map.insert(from_spot, legal_moves_vec);
+            if legal_moves_vec.len() > 0 {
+                legal_moves_map.insert(from_spot, legal_moves_vec);
+            }
+            
        }
-        //println!("validated_moves: {:?}", legal_moves_map);
+        if legal_moves_map.is_empty() {
+            let winner = match self.player{
+                Player::White => Player::Black,
+                Player::Black => Player::White,
+
+            };
+            println!("Game Over! Winner {:?}", winner);
+        }else {
+            println!("legal_moves_map.len() {:?} self.player {:?}", legal_moves_map.len(), self.player);
+        }
         Ok(legal_moves_map)
     }
 

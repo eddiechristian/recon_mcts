@@ -128,7 +128,7 @@ impl From<&FenRecord> for Chess {
                 'w' => Player::White,
                 _ => Player::Black,
             },
-            en_passant_target: None,
+            en_passant_target:  Some(fen_record.en_passant_target.clone()),
         }
     }
 }

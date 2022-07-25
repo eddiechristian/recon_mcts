@@ -178,7 +178,7 @@ pub(crate) fn  move_pawn_vertical(piece: &Piece, to_spot: &str, state: &[Option<
    
     Ok((to_spot.to_string(),MoveType::Regular))
 }
-pub(crate) fn  move_pawn_diagonal( piece: &Piece, to_spot: &str, state: &[Option<Piece>; 64], delta_y: i8, promotion_opt: Option<&str>) -> Result<(String,MoveType), chess_errors::ChessErrors>{
+pub(crate) fn  move_pawn_diagonal( piece: &Piece, to_spot: &str, state: &[Option<Piece>; 64], delta_y: i8, promotion_opt: Option<&str>, enpassant_target: Option<String>) -> Result<(String,MoveType), chess_errors::ChessErrors>{
     if piece.get_player() == Player::Black && delta_y > 0 {
         //black pawn annot move up
         let msg = format!("{}",to_spot);
@@ -190,8 +190,25 @@ pub(crate) fn  move_pawn_diagonal( piece: &Piece, to_spot: &str, state: &[Option
     }
     if let Ok(index) = chess_notation::notation_to_index(&to_spot) {
         if  state[index].is_none() {
-            let msg = format!("{}",to_spot);
-            return Err(chess_errors::ChessErrors::PawnCanOnlyAttackDiagonal(msg));
+            //check for enpassant
+            if let Some( target) = enpassant_target {
+                if to_spot == target {
+                    if  piece.get_player() == Player::White {
+                        let mut attack_index = chess_notation::notation_to_index(to_spot)?;
+                        attack_index +=8;
+                        return Ok((to_spot.to_string(),MoveType::Enpassant(attack_index)));
+                    }else {
+                        let mut attack_index = chess_notation::notation_to_index(to_spot)?;
+                        attack_index -=8;
+                        return Ok((to_spot.to_string(),MoveType::Enpassant(attack_index)));
+                    }
+                    
+                }
+            }
+            else {
+                let msg = format!("{}",to_spot);
+                return Err(chess_errors::ChessErrors::PawnCanOnlyAttackDiagonal(msg));
+            }
         }
     }
     if let Ok(row) =chess_notation::convert_row(to_spot){
@@ -220,7 +237,6 @@ pub(crate) fn  move_pawn_diagonal( piece: &Piece, to_spot: &str, state: &[Option
                 }
             }
         } else {
-            println!("pawn row {:?} to_spot {:?}", row, to_spot);
             if row == 0 {
                 match promotion_opt {
                     None => {

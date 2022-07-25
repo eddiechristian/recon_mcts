@@ -15,7 +15,7 @@ let height =80;
 const colorArray = ["#774C3B","#C99468","#774C3B","#C99468","#774C3B","#C99468","#774C3B","#C99468",
                     "#C99468","#774C3B","#C99468","#774C3B","#C99468","#774C3B","#C99468","#774C3B"];
 
-const fen_initial_state= "rnbqkbnr/pppp1pp1/8/P3p3/3PP3/6p1/1PP2P1P/RNBQKBNR b KQkq - 0 1";
+const fen_initial_state= "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
 var starterPosition;
 var current_fen_state = fen_initial_state

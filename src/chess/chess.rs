@@ -267,6 +267,7 @@ pub(crate) struct ChessState {
     pub st: [Option<Piece>; 64],
 }
 
+#[derive(Debug, Clone)]
 pub(crate) struct Chess {
     pub state: ChessState,
     pub player: Player,
@@ -341,6 +342,118 @@ impl From<&Chess> for FenRecord {
 }
 
 impl Chess {
+
+    pub fn check_for_check (cloned_game: &mut Chess ,chess_move: &str)->Result<(), chess_errors::ChessErrors> {
+        let the_move = chess_move.to_lowercase();
+        let from_spot = &the_move[0..2];
+        let to_spot = &the_move[2..4];
+        let mut en_passant_set_this_move =false;
+        
+        if let Ok((from, to)) = chess_notation::convert_move_notation_to_indexes(from_spot,to_spot) {
+            let promotion = if the_move.len() > 4 {
+                Some(&the_move[3..])
+            } else {
+                None
+            };
+            let move_type = cloned_game.is_move_valid(from_spot, to_spot, promotion)?;
+            // if this is a king adjust castling.
+            if cloned_game.state.st[from].as_ref().unwrap().piece_type  == PieceType::WhiteKing {
+                let new_castling = cloned_game.castling.as_mut().unwrap().replace("KQ", "");
+                cloned_game.castling = Some(new_castling);
+            } else if cloned_game.state.st[from].as_ref().unwrap().piece_type  == PieceType::BlackKing {
+                let new_castling = cloned_game.castling.as_mut().unwrap().replace("kq", "");
+                cloned_game.castling = Some(new_castling);
+            }
+            //if this is a rook adjust castling
+            if cloned_game.state.st[from].as_ref().unwrap().piece_type  == PieceType::WhiteRook {
+                if from_spot == "a1"{
+                    let new_castling = cloned_game.castling.as_mut().unwrap().replace("Q", "");
+                    cloned_game.castling = Some(new_castling);
+                } else if from_spot == "h1" {
+                    let new_castling = cloned_game.castling.as_mut().unwrap().replace("K", "");
+                    cloned_game.castling = Some(new_castling);
+                }
+               
+            } else if cloned_game.state.st[from].as_ref().unwrap().piece_type  == PieceType::BlackRook {
+                if from_spot == "a8"{
+                    let new_castling = cloned_game.castling.as_mut().unwrap().replace("q", "");
+                    cloned_game.castling = Some(new_castling);
+                } else if from_spot == "h8" {
+                    let new_castling = cloned_game.castling.as_mut().unwrap().replace("k", "");
+                    cloned_game.castling = Some(new_castling);
+                }
+            }
+            //if this is a pawn and move was two squares adjust enpassant.
+            let (from_point , to_point) = chess_notation::convert_move_notation_to_xy(from_spot, to_spot)?;
+            let delta_y = from_point.y as i8  - to_point.y as i8 ;
+            if delta_y.abs() == 2 {
+                if cloned_game.state.st[from].as_ref().unwrap().piece_type  == PieceType::WhitePawn {
+                    let enpassant_spot = chess_notation::index_to_spot(to + 8);
+                    cloned_game.en_passant_target = Some(enpassant_spot);
+                    en_passant_set_this_move = true
+                }else if cloned_game.state.st[from].as_ref().unwrap().piece_type  == PieceType::BlackPawn {
+                    let enpassant_spot = chess_notation::index_to_spot(to - 8);
+                    cloned_game.en_passant_target = Some(enpassant_spot);
+                    en_passant_set_this_move = true
+                }
+            }
+            //here down we are mutating state.... we should mutate a cloned state and then test for check with cloned state
+            let to_piece = std::mem::replace(&mut cloned_game.state.st[from], None);
+            if let MoveType::Promotion(piece_type) =  move_type.clone() {
+                let piece = Piece {
+                    piece_type,
+                };
+                cloned_game.state.st[to] = Some(piece);
+                cloned_game.player = {
+                    match cloned_game.player {
+                        Player::Black => Player::White,
+                        Player::White => Player::Black,
+                    }
+                };
+                return Ok(());
+            }
+            if move_type == MoveType::Castling {
+                if to_spot == "g8" {
+                    //black king side
+                    let to_piece = std::mem::replace(&mut cloned_game.state.st[chess_notation::notation_to_index("h8").unwrap()], None);
+                    cloned_game.state.st[chess_notation::notation_to_index("f8").unwrap()] = to_piece;
+                } else if to_spot == "c8" {
+                    //black queen side
+                    let to_piece = std::mem::replace(&mut cloned_game.state.st[chess_notation::notation_to_index("a8").unwrap()], None);
+                    cloned_game.state.st[chess_notation::notation_to_index("d8").unwrap()] = to_piece;
+                }else if to_spot == "g1" {
+                    //white king side
+                    let to_piece = std::mem::replace(&mut cloned_game.state.st[chess_notation::notation_to_index("h1").unwrap()], None);
+                    cloned_game.state.st[chess_notation::notation_to_index("f1").unwrap()] = to_piece;
+                }else if to_spot == "c1" {
+                    //white queen side
+                    let to_piece = std::mem::replace(&mut cloned_game.state.st[chess_notation::notation_to_index("a1").unwrap()], None);
+                    cloned_game.state.st[chess_notation::notation_to_index("d1").unwrap()] = to_piece;
+                }
+            }
+            if let MoveType::Enpassant(index) =  move_type.clone() { 
+                std::mem::replace(&mut cloned_game.state.st[index], None);
+            }
+            cloned_game.state.st[to] = to_piece;
+            cloned_game.player = {
+                match cloned_game.player {
+                    Player::Black => Player::White,
+                    Player::White => Player::Black,
+                }
+            };
+           //clear enpassant
+           if !en_passant_set_this_move {
+            cloned_game.en_passant_target = None;
+           }
+           
+        } else {
+            let msg = format!("Invalid notation");
+            return Err(chess_errors::ChessErrors::InvalidNotation(msg));
+        }
+    
+        Ok(())
+    }
+
     pub fn move_piece (&mut self ,chess_move: &str)->Result<(), chess_errors::ChessErrors> {
         let the_move = chess_move.to_lowercase();
         let from_spot = &the_move[0..2];
@@ -459,9 +572,32 @@ impl Chess {
        for (from_spot, to_spots) in unvalidated_moves.unwrap() {
             let mut legal_moves_vec = Vec::new();
             for to_spot in to_spots {
+                let mut results_in_check = false;
                 if self.is_move_valid(&from_spot, &to_spot , None).is_ok(){
-
-                    legal_moves_vec.push(format!("{}", to_spot));
+                    let mut cloned_game = self.clone();
+                    let this_move = format!("{}{}",from_spot,to_spot );
+                    Chess::check_for_check(&mut cloned_game, &this_move);
+                    let mut cloned_unvalidated_moves = cloned_game.get_unvalidated_moves();
+                    for (cloned_from_spot, cloned_to_spots) in cloned_unvalidated_moves.unwrap() {
+                        for cloned_to_spot in cloned_to_spots {
+                            let cloned_move = format!("{}{}",cloned_from_spot,cloned_to_spot );
+                            //only care about moves that attack opposing king
+                            let cloned_to_spot_index = chess_notation::notation_to_index(&cloned_to_spot)?;
+                            if let Some(piece) = &cloned_game.state.st[cloned_to_spot_index] {
+                                if piece.get_player() != cloned_game.player  {
+                                    if piece.piece_type == PieceType::BlackKing || piece.piece_type == PieceType::WhiteKing {
+                                        if cloned_game.is_move_valid(&cloned_from_spot, &cloned_to_spot , None).is_ok(){ 
+                                            results_in_check = true;
+                                        }
+                                        
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    if !results_in_check {
+                        legal_moves_vec.push(format!("{}", to_spot));
+                    }
                 }
             }
             legal_moves_map.insert(from_spot, legal_moves_vec);

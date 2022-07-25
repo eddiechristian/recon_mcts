@@ -77,7 +77,7 @@ pub(crate) enum PieceType {
     BlackQueen,
     BlackKing,
 }
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub(crate) struct Piece {
     pub piece_type: PieceType,
 }
@@ -231,7 +231,7 @@ pub struct WebGame {
 impl From<&Chess> for WebGame {
     fn from(chess: &Chess) -> Self {
         let mut state = [['.';8];8];
-        for (index, piece_opt) in chess.state.iter().enumerate() {
+        for (index, piece_opt) in chess.state.st.iter().enumerate() {
             let piece_type =
             match piece_opt {
                 Some(piece) =>{
@@ -260,10 +260,15 @@ impl From<&Chess> for WebGame {
             state,
         }
     }
+
+}
+#[derive(Debug, Clone)]
+pub(crate) struct ChessState {
+    pub st: [Option<Piece>; 64],
 }
 
 pub(crate) struct Chess {
-    pub state: [Option<Piece>; 64],
+    pub state: ChessState,
     pub player: Player,
     pub castling: Option<String>,
     pub halfmove_clock: u8,
@@ -274,7 +279,7 @@ pub(crate) struct Chess {
 impl From<&Chess> for FenRecord {
     fn from(chess: &Chess) -> Self {
         let mut piece_placement_data = "".to_owned();
-        for (index, piece_opt) in chess.state.iter().enumerate() {
+        for (index, piece_opt) in chess.state.st.iter().enumerate() {
             if index != 0 && index % 8 == 0 {
                 piece_placement_data.push_str("/");
             }
@@ -350,15 +355,15 @@ impl Chess {
             };
             let move_type = self.is_move_valid(from_spot, to_spot, promotion)?;
             // if this is a king adjust castling.
-            if self.state[from].as_ref().unwrap().piece_type  == PieceType::WhiteKing {
+            if self.state.st[from].as_ref().unwrap().piece_type  == PieceType::WhiteKing {
                 let new_castling = self.castling.as_mut().unwrap().replace("KQ", "");
                 self.castling = Some(new_castling);
-            } else if self.state[from].as_ref().unwrap().piece_type  == PieceType::BlackKing {
+            } else if self.state.st[from].as_ref().unwrap().piece_type  == PieceType::BlackKing {
                 let new_castling = self.castling.as_mut().unwrap().replace("kq", "");
                 self.castling = Some(new_castling);
             }
             //if this is a rook adjust castling
-            if self.state[from].as_ref().unwrap().piece_type  == PieceType::WhiteRook {
+            if self.state.st[from].as_ref().unwrap().piece_type  == PieceType::WhiteRook {
                 if from_spot == "a1"{
                     let new_castling = self.castling.as_mut().unwrap().replace("Q", "");
                     self.castling = Some(new_castling);
@@ -367,7 +372,7 @@ impl Chess {
                     self.castling = Some(new_castling);
                 }
                
-            } else if self.state[from].as_ref().unwrap().piece_type  == PieceType::BlackRook {
+            } else if self.state.st[from].as_ref().unwrap().piece_type  == PieceType::BlackRook {
                 if from_spot == "a8"{
                     let new_castling = self.castling.as_mut().unwrap().replace("q", "");
                     self.castling = Some(new_castling);
@@ -380,23 +385,23 @@ impl Chess {
             let (from_point , to_point) = chess_notation::convert_move_notation_to_xy(from_spot, to_spot)?;
             let delta_y = from_point.y as i8  - to_point.y as i8 ;
             if delta_y.abs() == 2 {
-                if self.state[from].as_ref().unwrap().piece_type  == PieceType::WhitePawn {
+                if self.state.st[from].as_ref().unwrap().piece_type  == PieceType::WhitePawn {
                     let enpassant_spot = chess_notation::index_to_spot(to + 8);
                     self.en_passant_target = Some(enpassant_spot);
                     en_passant_set_this_move = true
-                }else if self.state[from].as_ref().unwrap().piece_type  == PieceType::BlackPawn {
+                }else if self.state.st[from].as_ref().unwrap().piece_type  == PieceType::BlackPawn {
                     let enpassant_spot = chess_notation::index_to_spot(to - 8);
                     self.en_passant_target = Some(enpassant_spot);
                     en_passant_set_this_move = true
                 }
             }
             //here down we are mutating state.... we should mutate a cloned state and then test for check with cloned state
-            let to_piece = std::mem::replace(&mut self.state[from], None);
+            let to_piece = std::mem::replace(&mut self.state.st[from], None);
             if let MoveType::Promotion(piece_type) =  move_type.clone() {
                 let piece = Piece {
                     piece_type,
                 };
-                self.state[to] = Some(piece);
+                self.state.st[to] = Some(piece);
                 self.player = {
                     match self.player {
                         Player::Black => Player::White,
@@ -408,26 +413,26 @@ impl Chess {
             if move_type == MoveType::Castling {
                 if to_spot == "g8" {
                     //black king side
-                    let to_piece = std::mem::replace(&mut self.state[chess_notation::notation_to_index("h8").unwrap()], None);
-                    self.state[chess_notation::notation_to_index("f8").unwrap()] = to_piece;
+                    let to_piece = std::mem::replace(&mut self.state.st[chess_notation::notation_to_index("h8").unwrap()], None);
+                    self.state.st[chess_notation::notation_to_index("f8").unwrap()] = to_piece;
                 } else if to_spot == "c8" {
                     //black queen side
-                    let to_piece = std::mem::replace(&mut self.state[chess_notation::notation_to_index("a8").unwrap()], None);
-                    self.state[chess_notation::notation_to_index("d8").unwrap()] = to_piece;
+                    let to_piece = std::mem::replace(&mut self.state.st[chess_notation::notation_to_index("a8").unwrap()], None);
+                    self.state.st[chess_notation::notation_to_index("d8").unwrap()] = to_piece;
                 }else if to_spot == "g1" {
                     //white king side
-                    let to_piece = std::mem::replace(&mut self.state[chess_notation::notation_to_index("h1").unwrap()], None);
-                    self.state[chess_notation::notation_to_index("f1").unwrap()] = to_piece;
+                    let to_piece = std::mem::replace(&mut self.state.st[chess_notation::notation_to_index("h1").unwrap()], None);
+                    self.state.st[chess_notation::notation_to_index("f1").unwrap()] = to_piece;
                 }else if to_spot == "c1" {
                     //white queen side
-                    let to_piece = std::mem::replace(&mut self.state[chess_notation::notation_to_index("a1").unwrap()], None);
-                    self.state[chess_notation::notation_to_index("d1").unwrap()] = to_piece;
+                    let to_piece = std::mem::replace(&mut self.state.st[chess_notation::notation_to_index("a1").unwrap()], None);
+                    self.state.st[chess_notation::notation_to_index("d1").unwrap()] = to_piece;
                 }
             }
             if let MoveType::Enpassant(index) =  move_type.clone() { 
-                std::mem::replace(&mut self.state[index], None);
+                std::mem::replace(&mut self.state.st[index], None);
             }
-            self.state[to] = to_piece;
+            self.state.st[to] = to_piece;
             self.player = {
                 match self.player {
                     Player::Black => Player::White,
@@ -470,14 +475,14 @@ impl Chess {
     ) -> Result<HashMap<String, Vec<String>>, chess_errors::ChessErrors> {
     
         let mut unvalidated_moves = HashMap::new();
-        for (index, piece_opt) in self.state.iter().enumerate() {
+        for (index, piece_opt) in self.state.st.iter().enumerate() {
             if let Some(piece) = piece_opt {
                 if piece.get_player() == self.player {
                 match piece.piece_type {
                     PieceType::WhitePawn | PieceType::BlackPawn => {
                         let mut unvalidated_moves_pawn = get_pawn_unvalidated_moves(
                             piece,
-                            &self.state,
+                            &self.state.st,
                             &chess_notation::index_to_spot(index),
                         )?;
                         for (key, mut value) in unvalidated_moves_pawn.iter_mut() {
@@ -607,7 +612,7 @@ impl Chess {
                     PieceType::WhiteRook | PieceType::BlackRook => {
                         let mut unvalidated_moves_rook = get_rook_unvalidated_moves(
                             piece,
-                            &self.state,
+                            &self.state.st,
                             &chess_notation::index_to_spot(index),
                         )?;
                         for (key, mut value) in unvalidated_moves_rook.iter_mut() {
@@ -620,7 +625,7 @@ impl Chess {
                     PieceType::WhiteKnight | PieceType::BlackKnight => {
                         let mut unvalidated_moves_knight = get_knight_unvalidated_moves(
                             piece,
-                            &self.state,
+                            &self.state.st,
                             &chess_notation::index_to_spot(index),
                         )?;
                         for (key, mut value) in unvalidated_moves_knight.iter_mut() {
@@ -633,7 +638,7 @@ impl Chess {
                     PieceType::WhiteBishop | PieceType::BlackBishop => {
                         let mut unvalidated_moves_bishop = get_bishop_unvalidated_moves(
                             piece,
-                            &self.state,
+                            &self.state.st,
                             &chess_notation::index_to_spot(index),
                         )?;
                         for (key, mut value) in unvalidated_moves_bishop.iter_mut() {
@@ -646,7 +651,7 @@ impl Chess {
                     PieceType::WhiteQueen | PieceType::BlackQueen => {
                         let mut unvalidated_moves_queen = get_queen_unvalidated_moves(
                             piece,
-                            &self.state,
+                            &self.state.st,
                             &chess_notation::index_to_spot(index),
                         )?;
                         for (key, mut value) in unvalidated_moves_queen.iter_mut() {
@@ -659,7 +664,7 @@ impl Chess {
                     PieceType::WhiteKing | PieceType::BlackKing => {
                         let mut unvalidated_moves_king = get_king_unvalidated_moves(
                             piece,
-                            &self.state,
+                            &self.state.st,
                             &chess_notation::index_to_spot(index),
                         )?;
                         for (key, mut value) in unvalidated_moves_king.iter_mut() {
@@ -681,7 +686,7 @@ impl Chess {
     pub fn is_move_valid(&self, from_spot: &str, to_spot: &str, promotion_opt: Option<&str>)->Result<(MoveType), chess_errors::ChessErrors> {
         // first determine if piece at from is correct player.
         if let Ok(index) = chess_notation::notation_to_index(&from_spot) {
-            if let Some(piece) = &self.state[index] {
+            if let Some(piece) = &self.state.st[index] {
                 if piece.get_player() != self.player{
                     let msg = format!("{}",from_spot);
                     return Err(chess_errors::ChessErrors::WrongPlayer(msg));
@@ -693,7 +698,7 @@ impl Chess {
         }
         //if too spot is current player its invalid
         if let Ok(index) = chess_notation::notation_to_index(&to_spot) {
-            if let Some(piece) = &self.state[index] {
+            if let Some(piece) = &self.state.st[index] {
                 if piece.get_player() == self.player{
                     let msg = format!("{}",to_spot);
                     return Err(chess_errors::ChessErrors::PlayerPieceAlreadyThere(msg));
@@ -732,8 +737,8 @@ impl Chess {
                 self.is_path_blocked(from_spot, to_spot, dir)?;
             }
             if let Ok(index) = chess_notation::notation_to_index(&from_spot) {
-                if let Some(piece) = &self.state[index] {
-                    if let (_, MoveType::Promotion(new_piece)) = piece.move_vertical(to_spot, from_spot, &self.state, delta_y, promotion_opt)?{
+                if let Some(piece) = &self.state.st[index] {
+                    if let (_, MoveType::Promotion(new_piece)) = piece.move_vertical(to_spot, from_spot, &self.state.st, delta_y, promotion_opt)?{
                         return Ok(MoveType::Promotion(new_piece));
                     }
                 }
@@ -754,8 +759,8 @@ impl Chess {
                 self.is_path_blocked(from_spot, to_spot, dir)?;
             }
             if let Ok(index) = chess_notation::notation_to_index(&from_spot) {
-                if let Some(piece) = &self.state[index] {
-                    if let (_, _move_type) = piece.move_horizontal(to_spot, &self.state, delta_x, promotion_opt,self.castling.clone())?{
+                if let Some(piece) = &self.state.st[index] {
+                    if let (_, _move_type) = piece.move_horizontal(to_spot, &self.state.st, delta_x, promotion_opt,self.castling.clone())?{
                         return Ok(_move_type);
                     }
                 }
@@ -779,11 +784,11 @@ impl Chess {
                 self.is_path_blocked(from_spot, to_spot, dir)?;
             }
             if let Ok(index) = chess_notation::notation_to_index(&from_spot) {
-                if let Some(piece) = &self.state[index] {
-                    if let Some(piece) = &self.state[index] {
-                        if let (_, MoveType::Promotion(new_piece)) = piece.move_diagonal(to_spot, &self.state, delta_y, promotion_opt, self.en_passant_target.clone())?{
+                if let Some(piece) = &self.state.st[index] {
+                    if let Some(piece) = &self.state.st[index] {
+                        if let (_, MoveType::Promotion(new_piece)) = piece.move_diagonal(to_spot, &self.state.st, delta_y, promotion_opt, self.en_passant_target.clone())?{
                             return Ok(MoveType::Promotion(new_piece));
-                        }else if let (_, MoveType::Enpassant(index)) = piece.move_diagonal(to_spot, &self.state, delta_y, promotion_opt, self.en_passant_target.clone())?{
+                        }else if let (_, MoveType::Enpassant(index)) = piece.move_diagonal(to_spot, &self.state.st, delta_y, promotion_opt, self.en_passant_target.clone())?{
                             return Ok(MoveType::Enpassant(index));
                         }
                     }
@@ -796,8 +801,8 @@ impl Chess {
 
         }else if (delta_x.abs() == 2 && delta_y.abs() ==1) || (delta_x.abs() == 1 && delta_y.abs() ==2){
             if let Ok(index) = chess_notation::notation_to_index(&from_spot) {
-                if let Some(piece) = &self.state[index] {
-                    piece.move_knight(to_spot, &self.state, promotion_opt)?;
+                if let Some(piece) = &self.state.st[index] {
+                    piece.move_knight(to_spot, &self.state.st, promotion_opt)?;
                 }
             }
         }
@@ -843,7 +848,7 @@ impl Chess {
                         break;
                     }
                     if let Ok(index) = chess_notation::notation_to_index(&pos) {
-                        if let Some(piece) = &self.state[index] {
+                        if let Some(piece) = &self.state.st[index] {
                             return Err(chess_errors::ChessErrors::PieceBetween(pos));
                         }
                     }

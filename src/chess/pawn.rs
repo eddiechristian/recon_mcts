@@ -216,6 +216,8 @@ pub(crate) fn  move_pawn_diagonal( piece: &Piece, to_spot: &str, state: &[Option
                 let msg = format!("{}",to_spot);
                 return Err(chess_errors::ChessErrors::PawnCanOnlyAttackDiagonal(msg));
             }
+        }else if state[index].as_ref().unwrap().get_player() != piece.get_player(){
+            return Ok((to_spot.to_string(),MoveType::Regular));
         }else {
             let msg = format!("{}",to_spot);
             return Err(chess_errors::ChessErrors::PawnCanOnlyAttackDiagonal(msg));

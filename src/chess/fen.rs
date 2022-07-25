@@ -1,6 +1,6 @@
 use std::fmt;
 
-use super::chess::{Chess, Piece, PieceType, FEN_INITIAL_STATE, INIT};
+use super::chess::{Chess, Piece, PieceType, FEN_INITIAL_STATE, INIT, ChessState};
 
 use super::chess_mcts::Player;
 pub(crate) struct FenRecord {
@@ -107,8 +107,9 @@ impl From<&FenRecord> for Chess {
                 }
             }
         }
+        
         Chess {
-            state,
+            state: ChessState {st: state},
             full_move_number: fen_record.full_move_number,
             castling: Some(fen_record.castling.clone()),
             halfmove_clock: fen_record.halfmove_clock,

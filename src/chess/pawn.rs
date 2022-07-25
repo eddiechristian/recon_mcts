@@ -149,7 +149,6 @@ pub(crate) fn  move_pawn_vertical(piece: &Piece, to_spot: &str, state: &[Option<
                 }
             }
         } else {
-            println!("row {:?} to_spot {:?}", row, to_spot);
             if row == 0 {
                 match promotion_opt {
                     None => {

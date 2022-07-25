@@ -119,14 +119,14 @@ impl Piece {
             }
             PieceType::BlackKing => {
                 if delta_x == 2 {
-                    if castling.unwrap().contains("k") {
+                    if castling.unwrap().contains("q") {
                         Ok((to_spot.to_string(),MoveType::Castling))
                     } else {
                         let msg = format!("{}",to_spot);
                         return Err(chess_errors::ChessErrors::InvalidMove(msg));
                     }
                 } else if delta_x == -2 {
-                    if castling.unwrap().contains("q") {
+                    if castling.unwrap().contains("k") {
                         Ok((to_spot.to_string(),MoveType::Castling))
                     } else {
                         let msg = format!("{}",to_spot);
@@ -140,14 +140,14 @@ impl Piece {
             }
             PieceType::WhiteKing => {
                 if delta_x == 2 {
-                    if castling.unwrap().contains("K") {
+                    if castling.unwrap().contains("Q") {
                         Ok((to_spot.to_string(),MoveType::Castling))
                     } else {
                         let msg = format!("{}",to_spot);
                         return Err(chess_errors::ChessErrors::InvalidMove(msg));
                     }
                 } else if delta_x == -2 {
-                    if castling.unwrap().contains("Q") {
+                    if castling.unwrap().contains("K") {
                         Ok((to_spot.to_string(),MoveType::Castling))
                     } else {
                         let msg = format!("{}",to_spot);
@@ -376,8 +376,21 @@ impl Chess {
                     self.castling = Some(new_castling);
                 }
             }
+            //if this is a pawn and move was two squares adjust enpassant.
+            let (from_point , to_point) = chess_notation::convert_move_notation_to_xy(from_spot, to_spot)?;
+            let delta_y = from_point.y as i8  - to_point.y as i8 ;
+            if delta_y.abs() == 2 {
+                if self.state[from].as_ref().unwrap().piece_type  == PieceType::WhitePawn {
+                    let enpassant_spot = chess_notation::index_to_spot(to + 8);
+                    self.en_passant_target = Some(enpassant_spot);
+                }else if self.state[from].as_ref().unwrap().piece_type  == PieceType::BlackPawn {
+                    let enpassant_spot = chess_notation::index_to_spot(to - 8);
+                    self.en_passant_target = Some(enpassant_spot);
+                }
+            }
+
+            //here down we are mutating state.... we should mutate a cloned state and then test for check with cloned state
             let to_piece = std::mem::replace(&mut self.state[from], None);
-            println!("move_type {:?}",move_type);
             if let MoveType::Promotion(piece_type) =  move_type.clone() {
                 let piece = Piece {
                     piece_type,

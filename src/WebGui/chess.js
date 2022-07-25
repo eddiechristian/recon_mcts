@@ -15,10 +15,10 @@ let height =80;
 const colorArray = ["#774C3B","#C99468","#774C3B","#C99468","#774C3B","#C99468","#774C3B","#C99468",
                     "#C99468","#774C3B","#C99468","#774C3B","#C99468","#774C3B","#C99468","#774C3B"];
 
-const fen_initial_state= "1nbqkbnr/P1pppppp/1r6/8/8/2N2PP1/PpPPP2P/R1BQKBNR w KQk - 0 1";
+const fen_initial_state= "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
 var starterPosition;
-var current_fen_state = fen_initial_state
+var current_fen_state = "rnbqkbnr/ppp5/3p4/P3pp1p/2P3p1/2NPB3/1P1QPPPP/1R2KBNR w Kkq - 0 1"
 var from_spot;
 
 getValidMoves(); //only call when turn changes

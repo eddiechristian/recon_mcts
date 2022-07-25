@@ -149,6 +149,7 @@ pub(crate) fn  move_pawn_vertical(piece: &Piece, to_spot: &str, state: &[Option<
                 }
             }
         } else {
+            println!("row {:?} to_spot {:?}", row, to_spot);
             if row == 0 {
                 match promotion_opt {
                     None => {
@@ -178,7 +179,7 @@ pub(crate) fn  move_pawn_vertical(piece: &Piece, to_spot: &str, state: &[Option<
    
     Ok((to_spot.to_string(),MoveType::Regular))
 }
-pub(crate) fn  move_pawn_diagonal( piece: &Piece, to_spot: &str, state: &[Option<Piece>; 64], delta_y: i8, promotion: Option<&str>) -> Result<String, chess_errors::ChessErrors>{
+pub(crate) fn  move_pawn_diagonal( piece: &Piece, to_spot: &str, state: &[Option<Piece>; 64], delta_y: i8, promotion_opt: Option<&str>) -> Result<(String,MoveType), chess_errors::ChessErrors>{
     if piece.get_player() == Player::Black && delta_y > 0 {
         //black pawn annot move up
         let msg = format!("{}",to_spot);
@@ -194,5 +195,59 @@ pub(crate) fn  move_pawn_diagonal( piece: &Piece, to_spot: &str, state: &[Option
             return Err(chess_errors::ChessErrors::PawnCanOnlyAttackDiagonal(msg));
         }
     }
-    Ok(to_spot.to_string())
+    if let Ok(row) =chess_notation::convert_row(to_spot){
+        if piece.get_player() == Player::Black {
+            if row == 7 {
+                match promotion_opt {
+                    None => {
+                        return Ok((to_spot.to_string(),MoveType::Promotion(PieceType::BlackQueen)))
+                    },
+                    Some(promotion) => {
+                        match promotion {
+                            "r" => {
+                                return Ok((to_spot.to_string(),MoveType::Promotion(PieceType::BlackRook)));
+                            },
+                            "b" => {
+                                return Ok((to_spot.to_string(),MoveType::Promotion(PieceType::BlackBishop)));
+                            },
+                            "k" => {
+                                return Ok((to_spot.to_string(),MoveType::Promotion(PieceType::BlackKnight)));
+                            },
+                            _ => {
+                                return Ok((to_spot.to_string(),MoveType::Promotion(PieceType::BlackQueen)));
+                            },
+                        }
+                    }
+                }
+            }
+        } else {
+            println!("pawn row {:?} to_spot {:?}", row, to_spot);
+            if row == 0 {
+                match promotion_opt {
+                    None => {
+                        println!("ssss");
+                        return Ok((to_spot.to_string(),MoveType::Promotion(PieceType::WhiteQueen)))
+                    },
+                    Some(promotion) => {
+                        match promotion {
+                            "r" => {
+                                return Ok((to_spot.to_string(),MoveType::Promotion(PieceType::WhiteRook)));
+                            },
+                            "b" => {
+                                return Ok((to_spot.to_string(),MoveType::Promotion(PieceType::WhiteBishop)));
+                            },
+                            "k" => {
+                                return Ok((to_spot.to_string(),MoveType::Promotion(PieceType::WhiteKnight)));
+                            },
+                            _ => {
+                                return Ok((to_spot.to_string(),MoveType::Promotion(PieceType::WhiteQueen)));
+                            },
+                        }
+                        
+                    }
+                }
+            }
+        }   
+    }
+    Ok((to_spot.to_string(),MoveType::Regular))
 }

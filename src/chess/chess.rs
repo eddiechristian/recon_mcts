@@ -54,7 +54,7 @@ pub enum Direction {
     DownRight
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub(crate) enum MoveType {
     Enpassant(usize),
     Castling,
@@ -62,7 +62,7 @@ pub(crate) enum MoveType {
     Promotion(PieceType)
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub(crate) enum PieceType {
     WhitePawn,
     WhiteRook,
@@ -184,7 +184,7 @@ impl Piece {
 
         }
     }
-    fn move_diagonal(&self, to_spot: &str, state: &[Option<Piece>; 64], delta_y: i8, promotion: Option<&str>) -> Result<String, chess_errors::ChessErrors>{
+    fn move_diagonal(&self, to_spot: &str, state: &[Option<Piece>; 64], delta_y: i8, promotion: Option<&str>) -> Result<(String,MoveType), chess_errors::ChessErrors>{
         match self.piece_type {
             PieceType::BlackKnight | PieceType::WhiteKnight |
             PieceType::BlackRook | PieceType::WhiteRook => {
@@ -199,7 +199,7 @@ impl Piece {
                      let msg = format!("{}",to_spot);
                      return Err(chess_errors::ChessErrors::InvalidPromotion(msg));
                  }
-                 Ok(to_spot.to_string())
+                 Ok((to_spot.to_string(),MoveType::Regular))
              }
              PieceType::BlackPawn | PieceType::WhitePawn => {
                 move_pawn_diagonal(self, to_spot, state, delta_y, promotion)
@@ -377,6 +377,21 @@ impl Chess {
                 }
             }
             let to_piece = std::mem::replace(&mut self.state[from], None);
+            println!("move_type {:?}",move_type);
+            if let MoveType::Promotion(piece_type) =  move_type.clone() {
+                let piece = Piece {
+                    piece_type,
+                    moved: true
+                };
+                self.state[to] = Some(piece);
+                self.player = {
+                    match self.player {
+                        Player::Black => Player::White,
+                        Player::White => Player::Black,
+                    }
+                };
+                return Ok(());
+            }
             if move_type == MoveType::Castling {
                 if to_spot == "g8" {
                     //black king side
@@ -705,6 +720,9 @@ impl Chess {
                         return Ok(MoveType::Promotion(new_piece));
                     }
                 }
+                else {
+                    return Ok(MoveType::Regular);
+                }
             }
         } else if delta_y == 0{
             //Horiz
@@ -745,7 +763,14 @@ impl Chess {
             }
             if let Ok(index) = chess_notation::notation_to_index(&from_spot) {
                 if let Some(piece) = &self.state[index] {
-                    piece.move_diagonal(to_spot, &self.state, delta_y, promotion_opt)?;
+                    if let Some(piece) = &self.state[index] {
+                        if let (_, MoveType::Promotion(new_piece)) = piece.move_diagonal(to_spot, &self.state, delta_y, promotion_opt)?{
+                            return Ok(MoveType::Promotion(new_piece));
+                        }
+                    }
+                    else {
+                        return Ok(MoveType::Regular);
+                    }
                 }
             }
             // if diagonal deltas must be equal, except for Knight

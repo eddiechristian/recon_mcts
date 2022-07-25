@@ -15,10 +15,10 @@ let height =80;
 const colorArray = ["#774C3B","#C99468","#774C3B","#C99468","#774C3B","#C99468","#774C3B","#C99468",
                     "#C99468","#774C3B","#C99468","#774C3B","#C99468","#774C3B","#C99468","#774C3B"];
 
-const fen_initial_state= "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+const fen_initial_state= "1nbqkbnr/P1pppppp/1r6/8/8/2N2PP1/PpPPP2P/R1BQKBNR w KQk - 0 1";
 
 var starterPosition;
-var current_fen_state = "r3k2r/1bppqppp/ppnbpn2/8/8/1P1PBNP1/PQPNPPBP/R3K2R b KQkq - 0 1"
+var current_fen_state = fen_initial_state
 var from_spot;
 
 getValidMoves(); //only call when turn changes
@@ -104,13 +104,6 @@ function start_game() {
 
 }
 
-    
-  // async function getValidMoves() {
-  //   fetch("http://localhost:9090/chess")
-  // .then(r =>  r.json().then(data => ({status: r.status, body: data})))
-  // .then(obj => console.log(obj));
-  //  }
-
 
    async function getValidMoves() {
     var xhr = new XMLHttpRequest();
@@ -122,8 +115,6 @@ function start_game() {
             get_valid_move_resp = JSON.parse(xhr.responseText);
             starterPosition = get_valid_move_resp.web_game.state;
             values_map = get_valid_move_resp.moves;
-            // console.log(starterPosition)
-            // console.log(values_map)
             start_game()
         }
     };

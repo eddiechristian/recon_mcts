@@ -27,84 +27,72 @@ impl From<&FenRecord> for Chess {
                     'p' => {
                         state[index] = Some(Piece {
                             piece_type: PieceType::BlackPawn,
-                            moved: false,
                         });
                         index += 1;
                     }
                     'r' => {
                         state[index] = Some(Piece {
                             piece_type: PieceType::BlackRook,
-                            moved: false,
                         });
                         index += 1;
                     }
                     'n' => {
                         state[index] = Some(Piece {
                             piece_type: PieceType::BlackKnight,
-                            moved: false,
                         });
                         index += 1;
                     }
                     'b' => {
                         state[index] = Some(Piece {
                             piece_type: PieceType::BlackBishop,
-                            moved: false,
                         });
                         index += 1;
                     }
                     'q' => {
                         state[index] = Some(Piece {
                             piece_type: PieceType::BlackQueen,
-                            moved: false,
                         });
                         index += 1;
                     }
                     'k' => {
                         state[index] = Some(Piece {
                             piece_type: PieceType::BlackKing,
-                            moved: false,
                         });
                         index += 1;
                     }
                     'P' => {
                         state[index] = Some(Piece {
                             piece_type: PieceType::WhitePawn,
-                            moved: false,
                         });
                         index += 1;
                     }
                     'R' => {
                         state[index] = Some(Piece {
                             piece_type: PieceType::WhiteRook,
-                            moved: false,
                         });
                         index += 1;
                     }
                     'N' => {
                         state[index] = Some(Piece {
                             piece_type: PieceType::WhiteKnight,
-                            moved: false,
                         });
                         index += 1;
                     }
                     'B' => {
                         state[index] = Some(Piece {
                             piece_type: PieceType::WhiteBishop,
-                            moved: false,
                         });
                         index += 1;
                     }
                     'Q' => {
                         state[index] = Some(Piece {
                             piece_type: PieceType::WhiteQueen,
-                            moved: false,
                         });
                         index += 1;
                     }
                     'K' => {
                         state[index] = Some(Piece {
                             piece_type: PieceType::WhiteKing,
-                            moved: false,
                         });
                         index += 1;
                     }

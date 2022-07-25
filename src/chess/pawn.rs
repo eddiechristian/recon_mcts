@@ -91,7 +91,7 @@ pub(crate) fn get_pawn_unvalidated_moves(
     Ok(unvalidated_moves)
 }
 
-pub(crate) fn  move_pawn_vertical(piece: &Piece, to_spot: &str, state: &[Option<Piece>; 64], delta_y: i8, promotion_opt: Option<&str>) -> Result<(String,MoveType), chess_errors::ChessErrors>{
+pub(crate) fn  move_pawn_vertical(piece: &Piece, to_spot: &str, from_spot: &str, state: &[Option<Piece>; 64], delta_y: i8, promotion_opt: Option<&str>) -> Result<(String,MoveType), chess_errors::ChessErrors>{
     if let Ok(index) = chess_notation::notation_to_index(&to_spot) {
         if  let Some(forward_piece) = &state[index]{
             if forward_piece.get_player() != piece.get_player(){
@@ -108,10 +108,15 @@ pub(crate) fn  move_pawn_vertical(piece: &Piece, to_spot: &str, state: &[Option<
     }
     if delta_y.abs() == 2 {
          //pawns cannot move vert more than 1, if they moved before
-         if piece.moved == true {
+         let row = chess_notation::convert_row(from_spot)?;
+         if piece.get_player() == Player::White && row != 6 {
+            let msg = format!("{}",to_spot);
+            return Err(chess_errors::ChessErrors::InvalidMove(msg));
+         }else if piece.get_player() == Player::Black && row != 1 {
             let msg = format!("{}",to_spot);
             return Err(chess_errors::ChessErrors::InvalidMove(msg));
          }
+        
     }
     if piece.get_player() == Player::Black && delta_y > 0 {
         //black pawn cannot move up
@@ -175,7 +180,6 @@ pub(crate) fn  move_pawn_vertical(piece: &Piece, to_spot: &str, state: &[Option<
             }
         }   
     }
-   
     Ok((to_spot.to_string(),MoveType::Regular))
 }
 pub(crate) fn  move_pawn_diagonal( piece: &Piece, to_spot: &str, state: &[Option<Piece>; 64], delta_y: i8, promotion_opt: Option<&str>, enpassant_target: Option<String>) -> Result<(String,MoveType), chess_errors::ChessErrors>{
@@ -246,7 +250,6 @@ pub(crate) fn  move_pawn_diagonal( piece: &Piece, to_spot: &str, state: &[Option
             if row == 0 {
                 match promotion_opt {
                     None => {
-                        println!("ssss");
                         return Ok((to_spot.to_string(),MoveType::Promotion(PieceType::WhiteQueen)))
                     },
                     Some(promotion) => {
